@@ -230,6 +230,11 @@ function defaultState(){
     semanaBase: 'vos',
     palette: 'calida',
     names: { user: 'Juan Pablo', martina: 'Martina', abuela: 'Mercedes' },
+    customHolidays: [
+      { id: uid(), fecha:'2026-03-23', label:'Puente turístico' },
+      { id: uid(), fecha:'2026-07-10', label:'Puente turístico' },
+      { id: uid(), fecha:'2026-12-07', label:'Puente turístico' }
+    ],
     custodyPattern: {
       vos:     {0:'vos', 1:'martina', 2:'vos', 3:'martina', 4:'vos', 5:'vos', 6:'vos'},
       martina: {0:'martina', 1:'vos', 2:'martina', 3:'vos', 4:'martina', 5:'martina', 6:'martina'}
@@ -242,8 +247,10 @@ function defaultState(){
     tardeEnd: '21:00',
     overlapMode: 'avisar',
     fixedActivities: [],
+    oneOffActivities: [],
     pedidos: [],
-    domicilioVisits: []
+    domicilioVisits: [],
+    customHolidays: []
   };
 }
 
@@ -276,6 +283,63 @@ const DIAS_LARGOS = ['lunes','martes','miércoles','jueves','viernes','sábado',
 
 function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 
+/* ===================== FERIADOS ARGENTINA ===================== */
+// Fuente: calendario oficial del Gobierno Nacional (argentina.gob.ar/feriados), año 2026.
+// Los "puente turístico" y "trasladables" los decreta el gobierno año a año — no se pueden
+// calcular con una fórmula, hay que cargarlos a mano cuando salga el calendario del año siguiente.
+const FERIADOS_ARGENTINA = {
+  2026: [
+    ['2026-01-01','Año Nuevo'],
+    ['2026-02-16','Carnaval'],
+    ['2026-02-17','Carnaval'],
+    ['2026-03-23','Puente turístico'],
+    ['2026-03-24','Día de la Memoria'],
+    ['2026-04-02','Malvinas / Jueves Santo'],
+    ['2026-04-03','Viernes Santo'],
+    ['2026-05-01','Día del Trabajador'],
+    ['2026-05-25','Revolución de Mayo'],
+    ['2026-06-20','Gral. Belgrano'],
+    ['2026-07-09','Día de la Independencia'],
+    ['2026-07-10','Puente turístico'],
+    ['2026-08-17','Gral. San Martín'],
+    ['2026-10-12','Diversidad Cultural'],
+    ['2026-11-23','Día de la Soberanía'],
+    ['2026-12-07','Puente turístico'],
+    ['2026-12-08','Inmaculada Concepción'],
+    ['2026-12-25','Navidad']
+  ]
+};
+
+function feriadosDelAnio(year){
+  const base = (FERIADOS_ARGENTINA[year] || []).map(([fecha,label])=>({fecha,label,custom:false}));
+  const custom = (state.customHolidays || []).filter(h=>h.fecha.startsWith(String(year)));
+  return base.concat(custom);
+}
+function esFeriado(date){
+  const key = inputDeFecha(date);
+  const list = feriadosDelAnio(date.getFullYear());
+  return list.find(h=>h.fecha===key) || null;
+}
+function esDiaHabil(date){
+  const idx = weekdayIdx(date); // 0=Lun..6=Dom
+  if(idx>=5) return false; // sábado/domingo
+  if(esFeriado(date)) return false;
+  return true;
+}
+// Calcula la fecha de entrega sumando N días hábiles (salteando fines de semana y feriados)
+function calcularEntrega(inicioStr, diasHabiles){
+  if(!inicioStr || !diasHabiles || diasHabiles<1) return '';
+  let d = fechaDeInput(inicioStr);
+  let count = 0;
+  let guard = 0;
+  while(count < diasHabiles && guard < 2000){
+    if(esDiaHabil(d)){ count++; if(count===diasHabiles) break; }
+    d = addDays(d,1);
+    guard++;
+  }
+  return inputDeFecha(d);
+}
+
 function stripTime(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
 function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 function sameDay(a,b){ return stripTime(a).getTime() === stripTime(b).getTime(); }
@@ -305,7 +369,72 @@ function fmtFechaLarga(d){ return `${d.getDate()} de ${MESES[d.getMonth()]}`; }
 
 function currentDay(){ return addDays(stripTime(new Date()), state.dayOffset); }
 
-/* ===================== LÓGICA DE CUSTODIA (núcleo, reimplementado tal cual el handoff) ===================== */
+/* ===================== FERIADOS ARGENTINA (Ley 27.399 + puentes por decreto) ===================== */
+// Domingo de Pascua (algoritmo de Meeus/Jones/Butcher), base para Carnaval y Viernes Santo
+function easterSunday(year){
+  const a=year%19, b=Math.floor(year/100), c=year%100, d=Math.floor(b/4), e=b%4,
+        f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30,
+        i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7,
+        m=Math.floor((a+11*h+22*l)/451),
+        month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+  return new Date(year, month-1, day);
+}
+
+const _holidayCache = {};
+function nationalHolidaysForYear(year){
+  if(_holidayCache[year]) return _holidayCache[year];
+  const easter = easterSunday(year);
+  const list = [
+    {date: new Date(year,0,1), label:'Año Nuevo'},
+    {date: addDays(easter,-48), label:'Carnaval'},
+    {date: addDays(easter,-47), label:'Carnaval'},
+    {date: new Date(year,2,24), label:'Día Nacional de la Memoria'},
+    {date: new Date(year,3,2), label:'Día del Veterano y los Caídos en Malvinas'},
+    {date: addDays(easter,-2), label:'Viernes Santo'},
+    {date: new Date(year,4,1), label:'Día del Trabajador'},
+    {date: new Date(year,4,25), label:'Día de la Revolución de Mayo'},
+    {date: new Date(year,5,20), label:'Gral. Belgrano'},
+    {date: new Date(year,6,9), label:'Día de la Independencia'},
+    {date: new Date(year,11,8), label:'Inmaculada Concepción de María'},
+    {date: new Date(year,11,25), label:'Navidad'}
+  ];
+  // trasladables a lunes (Ley 27.399): mar/mié -> lunes anterior; jue/vie -> lunes siguiente
+  [[5,17,'Gral. Güemes'], [7,17,'Gral. San Martín'], [9,12,'Día del Respeto a la Diversidad Cultural'], [10,20,'Día de la Soberanía Nacional']]
+    .forEach(([m,day,label])=>{
+      let d = new Date(year,m,day);
+      const wd = weekdayIdx(d); // Lun=0..Dom=6
+      if(wd===1) d = addDays(d,-1);
+      else if(wd===2) d = addDays(d,-2);
+      else if(wd===3) d = addDays(d,4);
+      else if(wd===4) d = addDays(d,3);
+      list.push({date:d, label});
+    });
+  _holidayCache[year] = list;
+  return list;
+}
+
+function holidayOn(date){
+  const national = nationalHolidaysForYear(date.getFullYear()).find(h=>sameDay(h.date,date));
+  if(national) return national.label;
+  const custom = (state.customHolidays||[]).find(h=>sameDay(fechaDeInput(h.fecha),date));
+  return custom ? custom.label : null;
+}
+function isHoliday(date){ return !!holidayOn(date); }
+function isWorkingDay(date){ return weekdayIdx(date)<=4 && !isHoliday(date); }
+
+// Suma N días hábiles (lun-vie, sin feriados) a partir de una fecha de inicio (inclusive)
+function addBusinessDays(startDate, n){
+  if(!n || n<1) return null;
+  let d = new Date(startDate);
+  let count = isWorkingDay(d) ? 1 : 0;
+  while(count < n){
+    d = addDays(d,1);
+    if(isWorkingDay(d)) count++;
+  }
+  return d;
+}
+
+
 
 // Qué patrón (nombre de configuración 'vos'/'martina') aplica a la semana de esta fecha
 function appliedPattern(date){
@@ -345,7 +474,7 @@ function custodySegments(date){
     segs.push({start: state.jardinEnd, end: state.tardeEnd, cat:'vos', label: con('vos')});
     segs.push({start: state.tardeEnd, end:'24:00', cat: eveningOwner, label: con(eveningOwner)});
   } else if(idx === 5){ // Sábado
-    const weekendOwner = applied; // patrón A ('vos') = finde con el usuario
+    const weekendOwner = state.custodyPattern[applied][5]; // respeta lo configurado en "Pernocte por día"
     const prev = addDays(date, -1);
     const morningOwner = overnightOwner(prev);
     if(weekendOwner === 'vos'){
@@ -356,7 +485,7 @@ function custodySegments(date){
       segs.push({start:'00:00', end:'24:00', cat:'martina', label: con('martina')});
     }
   } else { // Domingo
-    const weekendOwner = applied;
+    const weekendOwner = state.custodyPattern[applied][6]; // respeta lo configurado en "Pernocte por día"
     segs.push({start:'00:00', end:'24:00', cat: weekendOwner, label: con(weekendOwner)});
   }
   return segs;
@@ -368,13 +497,19 @@ function dayItems(date){
   const items = [];
   custodySegments(date).forEach(s => items.push(Object.assign({type:'custodia'}, s)));
 
-  if(idx <= 4){ // turno fijo Lun-Vie
+  if(idx <= 4 && !isHoliday(date)){ // turno fijo Lun-Vie, salvo feriado
     items.push({type:'trabajo', start: state.workStart, end: state.workEnd, cat:'trabajo', label:'Turno fijo'});
   }
 
   state.fixedActivities.forEach(a=>{
     if(a.days.includes(idx)){
       items.push({type:'actividad', start:a.start, end:a.end, cat:'actividad', label:a.name, refId:a.id});
+    }
+  });
+
+  (state.oneOffActivities||[]).forEach(a=>{
+    if(sameDay(fechaDeInput(a.fecha), date)){
+      items.push({type:'actividad', start:a.inicio, end:a.fin, cat:'actividad', label:a.name, refId:a.id, oneOff:true});
     }
   });
 
@@ -399,6 +534,62 @@ function dayItems(date){
   return items;
 }
 
+// Rangos libres del día: 07:00–23:00 menos turno de trabajo, actividades y visitas (el tiempo con Julia no cuenta como "ocupado")
+// Asigna columnas a bloques que se superponen en el tiempo, para dibujarlos lado a lado (no uno encima del otro)
+function computeGridLayout(blocks){
+  const sorted = blocks.slice().sort((a,b)=> a.s-b.s || a.e-b.e);
+  const clusters = [];
+  let current = [], currentEnd = -1;
+  sorted.forEach(b=>{
+    if(current.length && b.s >= currentEnd){ clusters.push(current); current = []; currentEnd = -1; }
+    current.push(b);
+    currentEnd = Math.max(currentEnd, b.e);
+  });
+  if(current.length) clusters.push(current);
+
+  clusters.forEach(cluster=>{
+    const columnEnds = [];
+    cluster.forEach(b=>{
+      let placed = false;
+      for(let c=0; c<columnEnds.length; c++){
+        if(columnEnds[c] <= b.s){ b.col = c; columnEnds[c] = b.e; placed = true; break; }
+      }
+      if(!placed){ b.col = columnEnds.length; columnEnds.push(b.e); }
+    });
+    cluster.forEach(b => b.totalCols = columnEnds.length);
+  });
+  return sorted;
+}
+
+function freeRanges(date){
+  const DAY_START = 7*60, DAY_END = 23*60;
+  const busy = dayItems(date)
+    .filter(i => ['trabajo','actividad','visita'].includes(i.type))
+    .map(i=>{
+      let s = toMin(i.start), e = toMin(i.end);
+      if(e<=s) e = 24*60;
+      return [Math.max(s,DAY_START), Math.min(e,DAY_END)];
+    })
+    .filter(([s,e]) => e>s)
+    .sort((a,b)=> a[0]-b[0]);
+
+  const merged = [];
+  busy.forEach(([s,e])=>{
+    if(merged.length && s <= merged[merged.length-1][1]) merged[merged.length-1][1] = Math.max(merged[merged.length-1][1], e);
+    else merged.push([s,e]);
+  });
+
+  const free = [];
+  let cursor = DAY_START;
+  merged.forEach(([s,e])=>{
+    if(s > cursor) free.push([cursor,s]);
+    cursor = Math.max(cursor,e);
+  });
+  if(cursor < DAY_END) free.push([cursor,DAY_END]);
+
+  return free.filter(([s,e]) => e-s >= 15); // ignora huecos menores a 15 min
+}
+
 // Detección de superposición para el formulario de VISITA A DOMICILIO en una fecha/hora dada
 function checkOverlapVisita(fecha, inicio, fin, ignoreId){
   const date = fechaDeInput(fecha);
@@ -409,6 +600,22 @@ function checkOverlapVisita(fecha, inicio, fin, ignoreId){
   state.domicilioVisits.forEach(v=>{
     if(v.id===ignoreId) return;
     if(sameDay(fechaDeInput(v.fecha), date)) busy.push([toMin(v.inicio), toMin(v.fin)]);
+  });
+  const a1=toMin(inicio), a2=toMin(fin);
+  return busy.some(([b1,b2])=> a1<b2 && b1<a2);
+}
+
+// Detección de superposición para ACTIVIDAD DE UN SOLO DÍA (misma lógica que una visita: fecha puntual)
+function checkOverlapActividadUnica(fecha, inicio, fin, ignoreId){
+  const date = fechaDeInput(fecha);
+  const busy = [];
+  custodySegments(date).forEach(s=>{ if(s.cat==='vos' || s.cat==='tercero') busy.push([toMin(s.start), toMin(s.end)]); });
+  const idx = weekdayIdx(date);
+  state.fixedActivities.forEach(a=>{ if(a.days.includes(idx)) busy.push([toMin(a.start), toMin(a.end)]); });
+  state.domicilioVisits.forEach(v=>{ if(sameDay(fechaDeInput(v.fecha), date)) busy.push([toMin(v.inicio), toMin(v.fin)]); });
+  (state.oneOffActivities||[]).forEach(a=>{
+    if(a.id===ignoreId) return;
+    if(sameDay(fechaDeInput(a.fecha), date)) busy.push([toMin(a.inicio), toMin(a.fin)]);
   });
   const a1=toMin(inicio), a2=toMin(fin);
   return busy.some(([b1,b2])=> a1<b2 && b1<a2);
@@ -426,9 +633,9 @@ function checkOverlapActividad(days, inicio, fin, ignoreId){
       if(idx<=4){
         busy.push([toMin(state.jardinEnd), toMin(state.tardeEnd)]);
         if(owner==='vos') busy.push([toMin(state.tardeEnd), 24*60]);
-      } else if(idx===5 && pattern==='vos'){
+      } else if(idx===5 && owner==='vos'){
         busy.push([12*60, 24*60]);
-      } else if(idx===6 && pattern==='vos'){
+      } else if(idx===6 && owner==='vos'){
         busy.push([0, 24*60]);
       }
     });
@@ -467,20 +674,25 @@ function renderHoy(){
   const idx = weekdayIdx(date);
   const items = dayItems(date);
 
-  const owner = idx<=4 ? overnightOwner(date) : (idx===5 ? appliedPattern(date) : appliedPattern(date));
   // banner principal: con quién duerme HOY a la noche
   let bannerCat = 'vos';
   if(idx<=4) bannerCat = overnightOwner(date);
-  else if(idx===5) bannerCat = appliedPattern(date);
-  else bannerCat = appliedPattern(date);
+  else bannerCat = state.custodyPattern[appliedPattern(date)][idx]; // sábado (5) o domingo (6): respeta la config
 
   let banners = '';
+  const holidayLabel = holidayOn(date);
+  if(holidayLabel){
+    banners += `<div class="banner" style="background:var(--accent-soft)">
+      <div class="banner-eyebrow" style="color:var(--accent)">Feriado</div>
+      <div class="banner-title">${esc(holidayLabel)} — no hay turno fijo hoy</div>
+    </div>`;
+  }
   banners += `<div class="banner ${bannerCat==='vos'?'vos':'martina'}">
     <div class="banner-eyebrow">Julia Margarita</div>
     <div class="banner-title">Esta noche duerme ${bannerCat==='vos'?'con vos':('con '+nombre('martina'))}</div>
   </div>`;
 
-  if(idx===5 && appliedPattern(date)==='vos'){
+  if(idx===5 && state.custodyPattern[appliedPattern(date)][5]==='vos'){
     banners += `<div class="banner warn">
       <div class="banner-eyebrow">⚠ Cuidado de un tercero</div>
       <div class="banner-title">Organizá vos el cuidado de 08:00 hs a 12:00 hs</div>
@@ -498,7 +710,7 @@ function renderHoy(){
   let content = '';
   if(state.homeLayout === 'timeline'){
     content = items.map(i=>`
-      <div class="tl-item ${i.conflict?'conflict':''}">
+      <div class="tl-item ${i.conflict?'conflict':''}" ${i.oneOff?`onclick="openSheet('actividadUnica',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
         <div class="tl-bar" style="background:var(--c-${i.cat})"></div>
         <div style="flex:1">
           <div class="tl-time">${fmtRango(i.start,i.end)}</div>
@@ -514,14 +726,18 @@ function renderHoy(){
       hourRows.push(`<div class="grid-hour"><div class="grid-hour-label">${String(h).padStart(2,'0')}:00</div><div class="grid-track" data-h="${h}"></div></div>`);
     }
     const totalMin = (END_H-START_H)*60;
-    const blocks = items.map(i=>{
+    let clipped = items.map(i=>{
       let s = toMin(i.start), e = toMin(i.end);
       if(e<=s) e = 24*60;
       s = Math.max(s, START_H*60); e = Math.min(e, END_H*60);
-      if(e<=s) return '';
-      const top = (s-START_H*60)/totalMin*(HOUR_H*(END_H-START_H));
-      const h = (e-s)/totalMin*(HOUR_H*(END_H-START_H));
-      return `<div class="grid-block ${i.conflict?'conflict':''}" style="top:${top+2}px;height:${Math.max(h-2,14)}px;background:var(--c-${i.cat})">${esc(i.label)}</div>`;
+      return {s, e, item:i};
+    }).filter(b => b.e > b.s);
+    clipped = computeGridLayout(clipped);
+    const blocks = clipped.map(b=>{
+      const top = (b.s-START_H*60)/totalMin*(HOUR_H*(END_H-START_H));
+      const h = (b.e-b.s)/totalMin*(HOUR_H*(END_H-START_H));
+      const leftPct = b.col/b.totalCols*100, widthPct = 100/b.totalCols;
+      return `<div class="grid-block ${b.item.conflict?'conflict':''}" style="top:${top+2}px;height:${Math.max(h-2,14)}px;left:calc(${leftPct}% + 2px);width:calc(${widthPct}% - 4px);right:auto;background:var(--c-${b.item.cat})">${esc(b.item.label)}</div>`;
     }).join('');
     content = `<div class="grid-wrap" style="position:relative">${hourRows.join('')}<div style="position:absolute;top:0;left:44px;right:0;bottom:0">${blocks}</div></div>`;
   }
@@ -542,6 +758,16 @@ function renderHoy(){
       <button class="${state.homeLayout==='grid'?'active':''}" onclick="setLayout('grid')">Vista grilla</button>
     </div>
     ${content}
+
+    <div class="banner" style="background:var(--surface-alt);margin-top:14px">
+      <div class="banner-eyebrow" style="color:var(--text-2)">Horarios libres hoy</div>
+      <div class="banner-title" style="font-weight:500;font-size:13.5px">
+        ${(() => {
+          const free = freeRanges(date);
+          return free.length ? free.map(([s,e])=>fmtRango(toHHMM(s),toHHMM(e))).join(' · ') : 'Sin huecos libres entre las 7:00 y las 23:00';
+        })()}
+      </div>
+    </div>
   </div>
   <button class="fab" onclick="openSheet('fabMenu')">+</button>
   `;
@@ -617,6 +843,18 @@ function estadoPedido(p){
 }
 
 function renderPedidos(){
+  const totalPendiente = state.pedidos.reduce((acc,p)=>{
+    const saldo = (Number(p.precio)||0) - (Number(p.sena)||0);
+    return acc + Math.max(saldo,0);
+  },0);
+  const pedidosConSaldo = state.pedidos.filter(p=> ((Number(p.precio)||0) - (Number(p.sena)||0)) > 0).length;
+  const resumenFinanciero = state.pedidos.length ? `
+    <div class="card" style="background:var(--accent-soft);border-color:transparent;margin-bottom:14px">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--accent)">Saldo pendiente de cobro</div>
+      <div class="serif" style="font-size:24px;font-weight:600;margin-top:3px">$${totalPendiente.toLocaleString('es-AR')}</div>
+      <div style="font-size:12px;color:var(--text-2);margin-top:2px">${pedidosConSaldo} pedido${pedidosConSaldo!==1?'s':''} con saldo pendiente</div>
+    </div>` : '';
+
   const cards = state.pedidos.length ? state.pedidos.map(p=>{
     const est = estadoPedido(p);
     return `<div class="card" onclick="openSheet('pedidoDetalle',{id:'${p.id}'})">
@@ -656,6 +894,7 @@ function renderPedidos(){
       <div class="section-title" style="margin:0">Pedidos</div>
       <button class="btn btn-primary" onclick="openSheet('pedidoForm')">+ Nuevo</button>
     </div>
+    ${resumenFinanciero}
     ${cards}
     <div class="section-title">Visitas a domicilio agendadas</div>
     ${visitasHtml}
@@ -694,6 +933,23 @@ function renderAjustes(){
       <button class="remove-x" onclick="removeActivity('${a.id}')">×</button>
     </div>
   `).join('') : `<div class="empty-state" style="padding:16px 0">Sin actividades fijas.</div>`;
+
+  const proximosFeriados = nationalHolidaysForYear(currentDay().getFullYear())
+    .concat(nationalHolidaysForYear(currentDay().getFullYear()+1))
+    .filter(h=>h.date >= stripTime(new Date()))
+    .sort((a,b)=>a.date-b.date)
+    .slice(0,4)
+    .map(h=>`<div class="detail-line">${fmtFechaCorta(h.date)} — ${esc(h.label)}</div>`).join('');
+
+  const customHolidaysHtml = (state.customHolidays||[]).length ? state.customHolidays.slice().sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(h=>`
+    <div class="activity-row">
+      <div>
+        <div class="activity-name">${esc(h.label)}</div>
+        <div class="activity-sub">${fmtFechaCorta(fechaDeInput(h.fecha))}</div>
+      </div>
+      <button class="remove-x" onclick="removeCustomHoliday('${h.id}')">×</button>
+    </div>
+  `).join('') : `<div class="empty-state" style="padding:12px 0">Sin puentes turísticos cargados.</div>`;
 
   const palettes = [
     {key:'calida', label:'Cálida', colors:['#3B6D11','#8B98A0','#8A5410','#4B4D4F','#7A5A3A']},
@@ -755,6 +1011,17 @@ function renderAjustes(){
     ${actividades}
     <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="openSheet('actividadForm')">+ Agregar actividad</button>
 
+    <div class="section-title">Feriados</div>
+    <div class="detail-label" style="margin-top:0">Próximos (calculados automáticamente)</div>
+    ${proximosFeriados || '<div class="empty-state" style="padding:8px 0">Sin feriados próximos.</div>'}
+    <div class="detail-label">Puentes turísticos / otros no laborables (editable)</div>
+    ${customHolidaysHtml}
+    <div class="field-row" style="margin-top:10px">
+      <div class="field"><label>Fecha</label><input type="date" id="newHolidayDate"></div>
+      <div class="field"><label>Motivo</label><input type="text" id="newHolidayLabel" placeholder="Ej: Puente turístico"></div>
+    </div>
+    <button class="btn btn-secondary btn-block" onclick="addCustomHoliday()">+ Agregar feriado / puente</button>
+
     <div class="section-title">Modo ante superposición laboral/personal</div>
     <div class="toggle-row" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
       <div>
@@ -766,6 +1033,16 @@ function renderAjustes(){
 
     <div class="section-title">Paleta de colores</div>
     <div class="palette-row">${palettes}</div>
+
+    <div class="section-title">Copia de seguridad</div>
+    <button class="btn btn-secondary btn-block" onclick="exportBackup()">⬇ Exportar copia (.json)</button>
+    <label class="btn btn-secondary btn-block" style="margin-top:8px;text-align:center;cursor:pointer">
+      ⬆ Importar copia
+      <input type="file" accept="application/json,.json" style="display:none" onchange="importBackupFile(this)">
+    </label>
+    <div class="detail-line" style="color:var(--text-3);font-size:11.5px;margin-top:8px">
+      Guardá el archivo exportado en Google Drive, o mandátelo por WhatsApp a vos mismo cada tanto. Importar reemplaza todos los datos actuales por los del archivo — no se combinan.
+    </div>
   </div>
   `;
 }
@@ -778,9 +1055,68 @@ function toggleCustodyCell(patternKey, idx){
 function toggleSemanaBase(){ state.semanaBase = state.semanaBase==='vos'?'martina':'vos'; save(); render(); }
 function toggleOverlapMode(){ state.overlapMode = state.overlapMode==='avisar'?'bloquear':'avisar'; save(); render(); }
 function updateHorario(key,val){ state[key]=val; save(); render(); }
+function quickHorarioChanged(key,val){ state[key]=val; save(); } // silencioso: no toca el input mientras se edita, se ve reflejado al cerrar la hoja
 function updateNombre(key,val){ state.names[key] = val.trim() || state.names[key]; save(); render(); }
 function setPalette(p){ state.palette=p; save(); render(); }
+
+function exportBackup(){
+  try{
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mi-semana-backup-${inputDeFecha(new Date())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('No se pudo exportar la copia. Probá de nuevo.');
+  }
+}
+
+function importBackupFile(inputEl){
+  const file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let parsed;
+    try{
+      parsed = JSON.parse(e.target.result);
+    }catch(err){
+      alert('No se pudo leer el archivo. Verificá que sea un backup exportado desde esta misma app (.json).');
+      inputEl.value = '';
+      return;
+    }
+    if(!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.pedidos)){
+      alert('El archivo no parece una copia válida de Mi Semana.');
+      inputEl.value = '';
+      return;
+    }
+    if(!confirm('Esto va a reemplazar TODOS los datos actuales (pedidos, visitas, horarios, ajustes) por los del archivo. ¿Confirmás?')){
+      inputEl.value = '';
+      return;
+    }
+    state = Object.assign(defaultState(), parsed);
+    save();
+    inputEl.value = '';
+    render();
+    alert('Copia importada correctamente.');
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsText(file);
+}
 function removeActivity(id){ state.fixedActivities = state.fixedActivities.filter(a=>a.id!==id); save(); render(); }
+
+function addCustomHoliday(){
+  const fecha = document.getElementById('newHolidayDate').value;
+  const label = document.getElementById('newHolidayLabel').value.trim() || 'Día no laborable';
+  if(!fecha) return;
+  state.customHolidays = state.customHolidays || [];
+  state.customHolidays.push({id: uid(), fecha, label});
+  save(); render();
+}
+function removeCustomHoliday(id){ state.customHolidays = (state.customHolidays||[]).filter(h=>h.id!==id); save(); render(); }
 
 /* ===================== SHEETS: formularios ===================== */
 function renderSheet(){
@@ -793,7 +1129,11 @@ function renderSheet(){
     body = `
       <div class="action-item" onclick="closeSheet(); openSheet('actividadForm')">
         <div class="action-icon">${ICONS.home}</div>
-        <div class="action-label">Actividad personal fija</div>
+        <div class="action-label">Actividad fija (se repite cada semana)</div>
+      </div>
+      <div class="action-item" onclick="closeSheet(); openSheet('actividadUnica')">
+        <div class="action-icon">${ICONS.hoy}</div>
+        <div class="action-label">Actividad de un solo día</div>
       </div>
       <div class="action-item" onclick="closeSheet(); openSheet('visita')">
         <div class="action-icon">${ICONS.visit}</div>
@@ -803,6 +1143,38 @@ function renderSheet(){
         <div class="action-icon">${ICONS.order}</div>
         <div class="action-label">Nuevo pedido de cliente</div>
       </div>
+      <div class="action-item" onclick="closeSheet(); openSheet('horariosQuick')">
+        <div class="action-icon">${ICONS.ajustes}</div>
+        <div class="action-label">Editar horarios</div>
+      </div>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  if(type==='horariosQuick'){
+    title = 'Editar horarios';
+    body = `
+      <div class="section-title" style="margin-top:0">Tu turno de trabajo</div>
+      <div class="field-row">
+        <div class="field"><label>Inicio</label><input type="time" value="${state.workStart}" onchange="quickHorarioChanged('workStart',this.value)"></div>
+        <div class="field"><label>Fin</label><input type="time" value="${state.workEnd}" onchange="quickHorarioChanged('workEnd',this.value)"></div>
+      </div>
+      <div class="section-title">Horarios con ${esc(nombre('martina'))}</div>
+      <div class="field-row">
+        <div class="field"><label>Desde</label><input type="time" value="${state.martinaStart}" onchange="quickHorarioChanged('martinaStart',this.value)"></div>
+        <div class="field"><label>Hasta (la lleva al jardín)</label><input type="time" value="${state.jardinStart}" onchange="quickHorarioChanged('jardinStart',this.value)"></div>
+      </div>
+      <div class="section-title">Horarios con ${esc(nombre('abuela'))}</div>
+      <div class="field-row">
+        <div class="field"><label>Desde</label><input type="time" value="${state.jardinStart}" onchange="quickHorarioChanged('jardinStart',this.value)"></div>
+        <div class="field"><label>Hasta</label><input type="time" value="${state.jardinEnd}" onchange="quickHorarioChanged('jardinEnd',this.value)"></div>
+      </div>
+      <div class="section-title">Horarios con ${esc(nombre('user'))}</div>
+      <div class="field-row">
+        <div class="field"><label>Desde</label><input type="time" value="${state.jardinEnd}" onchange="quickHorarioChanged('jardinEnd',this.value)"></div>
+        <div class="field"><label>Hasta (corte, de ahí depende el pernocte)</label><input type="time" value="${state.tardeEnd}" onchange="quickHorarioChanged('tardeEnd',this.value)"></div>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:6px" onclick="closeSheet()">Listo</button>
     `;
     return wrapSheet(title, body, true);
   }
@@ -825,6 +1197,29 @@ function renderSheet(){
       </div>
       <div id="overlapNoteBox">${conflict ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : ''}</div>
       <button id="sheetSaveBtn" class="btn btn-primary btn-block" ${(!d.name||!d.days.length)?'disabled':''} onclick="saveActividad()">Guardar actividad</button>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  if(type==='actividadUnica'){
+    const existing = data.id ? (state.oneOffActivities||[]).find(v=>v.id===data.id) : null;
+    const d = data.draft || (existing ? Object.assign({},existing) : {name:'', fecha: inputDeFecha(currentDay()), inicio:'18:30', fin:'19:30'});
+    sheetState.data.draft = d;
+    title = existing ? 'Editar actividad' : 'Actividad de un solo día';
+    const conflict = checkOverlapActividadUnica(d.fecha, d.inicio, d.fin, existing?existing.id:null);
+    const bloqueado = conflict && state.overlapMode==='bloquear';
+    body = `
+      <div class="field"><label>Nombre</label><input type="text" value="${esc(d.name)}" placeholder="Ej: Turno médico" oninput="draftUpdateSilent('name',this.value)"></div>
+      <div class="field"><label>Fecha</label><input type="date" value="${d.fecha}" onchange="sheetDateTimeChanged('fecha',this.value)"></div>
+      <div class="field-row">
+        <div class="field"><label>Hora inicio</label><input type="time" value="${d.inicio}" onchange="sheetDateTimeChanged('inicio',this.value)"></div>
+        <div class="field"><label>Hora fin</label><input type="time" value="${d.fin}" onchange="sheetDateTimeChanged('fin',this.value)"></div>
+      </div>
+      <div id="overlapNoteBox">${conflict ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : ''}</div>
+      <div style="display:flex;gap:8px">
+        ${existing?`<button class="btn btn-danger" onclick="deleteActividadUnica('${existing.id}')">Eliminar</button>`:''}
+        <button id="sheetSaveBtn" class="btn btn-primary" style="flex:1" ${(!d.name||!d.fecha||bloqueado)?'disabled':''} onclick="saveActividadUnica('${existing?existing.id:''}')">${bloqueado?'No se puede guardar (cruce)':'Guardar actividad'}</button>
+      </div>
     `;
     return wrapSheet(title, body, true);
   }
@@ -854,24 +1249,27 @@ function renderSheet(){
   }
 
   if(type==='pedidoForm'){
-    const d = data.draft || {cliente:'', contacto:'', descripcion:'', direccion:'', inicio:'', entrega:'', precio:'', sena:'', materiales:''};
+    const existing = data.id ? state.pedidos.find(p=>p.id===data.id) : null;
+    const d = data.draft || (existing ? Object.assign({},existing) : {cliente:'', contacto:'', descripcion:'', direccion:'', inicio:'', entrega:'', duracion:'', precio:'', sena:'', materiales:''});
     sheetState.data.draft = d;
-    title = 'Nuevo pedido';
+    title = existing ? 'Editar pedido' : 'Nuevo pedido';
     body = `
       <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdateSilent('cliente',this.value)"></div>
       <div class="field"><label>Contacto</label><input type="text" value="${esc(d.contacto)}" oninput="draftUpdateSilent('contacto',this.value)"></div>
       <div class="field"><label>Descripción</label><textarea oninput="draftUpdateSilent('descripcion',this.value)">${esc(d.descripcion)}</textarea></div>
       <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdateSilent('direccion',this.value)"></div>
       <div class="field-row">
-        <div class="field"><label>Fecha inicio</label><input type="date" value="${d.inicio}" onchange="sheetDateTimeChanged('inicio',this.value)"></div>
-        <div class="field"><label>Fecha entrega</label><input type="date" value="${d.entrega}" onchange="sheetDateTimeChanged('entrega',this.value)"></div>
+        <div class="field"><label>Fecha inicio</label><input type="date" value="${d.inicio}" onchange="pedidoFieldChanged('inicio',this.value)"></div>
+        <div class="field"><label>Duración (días hábiles)</label><input type="number" min="1" value="${d.duracion||''}" placeholder="Ej: 5" oninput="pedidoFieldChanged('duracion',this.value)"></div>
       </div>
+      <div class="field"><label>Fecha entrega</label><input type="date" id="entregaInput" value="${d.entrega}" onchange="sheetDateTimeChanged('entrega',this.value)"></div>
+      <div id="entregaAutoNote" class="detail-line" style="color:var(--text-3);font-size:11.5px;margin:-6px 0 12px">${d.inicio&&d.duracion?('Calculada: '+fmtFechaCorta(fechaDeInput(d.entrega))+' (salteando fines de semana y feriados)'):'Cargá inicio y duración para calcularla sola, o escribila a mano.'}</div>
       <div class="field-row">
         <div class="field"><label>Precio</label><input type="number" value="${d.precio}" oninput="draftUpdateSilent('precio',this.value)"></div>
         <div class="field"><label>Seña</label><input type="number" value="${d.sena}" oninput="draftUpdateSilent('sena',this.value)"></div>
       </div>
       <div class="field"><label>Materiales</label><textarea oninput="draftUpdateSilent('materiales',this.value)">${esc(d.materiales)}</textarea></div>
-      <button id="sheetSaveBtn" class="btn btn-primary btn-block" ${!d.cliente?'disabled':''} onclick="savePedido()">Guardar pedido</button>
+      <button id="sheetSaveBtn" class="btn btn-primary btn-block" ${!d.cliente?'disabled':''} onclick="savePedido('${existing?existing.id:''}')">${existing?'Guardar cambios':'Guardar pedido'}</button>
     `;
     return wrapSheet(title, body, true);
   }
@@ -911,7 +1309,10 @@ function renderSheet(){
         <div class="photo-slot">Foto 2</div>
         <div class="photo-slot">Foto 3</div>
       </div>
-      <button class="btn btn-danger btn-block" style="margin-top:18px" onclick="deletePedido('${p.id}')">Eliminar pedido</button>
+      <div style="display:flex;gap:8px;margin-top:18px">
+        <button class="btn btn-secondary" style="flex:1" onclick="closeSheet(); openSheet('pedidoForm',{id:'${p.id}'})">Editar</button>
+        <button class="btn btn-danger" style="flex:1" onclick="deletePedido('${p.id}')">Eliminar</button>
+      </div>
     `;
     return wrapSheet(title, body, true);
   }
@@ -941,13 +1342,42 @@ function sheetDateTimeChanged(key,val){
   requestAnimationFrame(refreshSheetDynamic);
 }
 
+function pedidoFieldChanged(key, val){
+  sheetState.data.draft[key] = val;
+  const run = () => {
+    const d = sheetState.data.draft;
+    if(d.inicio && d.duracion && Number(d.duracion) > 0){
+      const entregaDate = addBusinessDays(fechaDeInput(d.inicio), Number(d.duracion));
+      d.entrega = inputDeFecha(entregaDate);
+      const inp = document.getElementById('entregaInput');
+      if(inp && inp.value !== d.entrega) inp.value = d.entrega;
+      const note = document.getElementById('entregaAutoNote');
+      if(note) note.textContent = 'Calculada: ' + fmtFechaCorta(entregaDate) + ' (salteando fines de semana y feriados)';
+    }
+    refreshSheetDynamic();
+  };
+  if(key === 'inicio') requestAnimationFrame(run); else run();
+}
+
 function refreshSheetDynamic(){
   if(!sheetState) return;
   const {type, data} = sheetState;
   const d = data.draft;
   const noteBox = document.getElementById('overlapNoteBox');
   const btn = document.getElementById('sheetSaveBtn');
-  if(type==='visita'){
+  if(type==='actividadUnica'){
+    const conflict = checkOverlapActividadUnica(d.fecha, d.inicio, d.fin, data.id || null);
+    const bloqueado = conflict && state.overlapMode==='bloquear';
+    const html = conflict
+      ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : '';
+    if(noteBox && noteBox.innerHTML !== html) noteBox.innerHTML = html;
+    if(btn){
+      const shouldDisable = !(d.name && d.fecha) || bloqueado;
+      const label = bloqueado ? 'No se puede guardar (cruce)' : 'Guardar actividad';
+      if(btn.disabled !== shouldDisable) btn.disabled = shouldDisable;
+      if(btn.textContent !== label) btn.textContent = label;
+    }
+  } else if(type==='visita'){
     const conflict = checkOverlapVisita(d.fecha, d.inicio, d.fin, data.id || null);
     const bloqueado = conflict && state.overlapMode==='bloquear';
     const html = conflict
@@ -999,9 +1429,27 @@ function saveVisita(existingId){
 }
 function deleteVisita(id){ state.domicilioVisits = state.domicilioVisits.filter(v=>v.id!==id); save(); closeSheet(); }
 
-function savePedido(){
+function saveActividadUnica(existingId){
   const d = sheetState.data.draft;
-  state.pedidos.push(Object.assign({id:uid(), checklist:[], fotos:[]}, d));
+  state.oneOffActivities = state.oneOffActivities || [];
+  if(existingId){
+    const a = state.oneOffActivities.find(x=>x.id===existingId);
+    Object.assign(a, d);
+  } else {
+    state.oneOffActivities.push(Object.assign({id:uid()}, d));
+  }
+  save(); closeSheet();
+}
+function deleteActividadUnica(id){ state.oneOffActivities = (state.oneOffActivities||[]).filter(a=>a.id!==id); save(); closeSheet(); }
+
+function savePedido(existingId){
+  const d = sheetState.data.draft;
+  if(existingId){
+    const p = state.pedidos.find(x=>x.id===existingId);
+    Object.assign(p, d);
+  } else {
+    state.pedidos.push(Object.assign({id:uid(), checklist:[], fotos:[]}, d));
+  }
   save(); closeSheet();
 }
 function deletePedido(id){ state.pedidos = state.pedidos.filter(p=>p.id!==id); save(); closeSheet(); }
