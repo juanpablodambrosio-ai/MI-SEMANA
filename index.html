@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7A5A3A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mi Semana">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mi Semana — Julia · Taller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F7F6; --surface:#FFFFFF; --surface-alt:#EFEFED;
+  --border:#E2E2DF; --border-strong:#CACAC5;
+  --text:#24272A; --text-2:#565B5E; --text-3:#75797C;
+  --accent:#7A5A3A; --accent-hover:#5F4429; --accent-soft:#F3EADD;
+  --ok:#3B6D11; --ok-bg:#EAF3DE;
+  --warn:#8A5410; --warn-bg:#FBF0DD;
+  --danger:#A8362D; --danger-bg:#FCECEA;
+  --c-vos:#3B6D11; --c-martina:#8B98A0; --c-jardin:#8A5410; --c-trabajo:#4B4D4F; --c-domicilio:#7A5A3A; --c-actividad:#B9A088; --c-tercero:#75797C;
+}
+[data-palette="fria"]{ --c-vos:#3D6B6B; --c-martina:#8B98A0; --c-jardin:#8A5410; --c-trabajo:#2C2A28; --c-domicilio:#7A5A3A; --c-actividad:#AFC5C5; }
+[data-palette="minimal"]{ --c-vos:#3B6D11; --c-martina:#ACAFB1; --c-jardin:#8C8F91; --c-trabajo:#4B4D4F; --c-domicilio:#7A5A3A; --c-actividad:#BDD1A4; }
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:0;height:0}
+input,textarea,select,button{font-family:'Inter',sans-serif; color:var(--text);}
+button{cursor:pointer;}
+.serif{font-family:'Fraunces',serif;}
+#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);position:relative;}
+.header{padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 12px;background:var(--surface);box-shadow:0 1px 2px rgba(36,39,42,0.04),0 2px 8px rgba(36,39,42,0.05);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:5;}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0;}
+.header-title{display:flex;align-items:center;gap:9px;}
+.header-name{font-weight:600;font-size:15px;letter-spacing:-0.01em;}
+.header-sub{font-size:11px;color:var(--text-3);}
+main{flex:1;overflow-y:auto;padding-bottom:96px;position:relative;}
+.screen{padding:16px 18px 24px;animation:fadeIn 180ms ease both;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes sheetUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* day nav */
+.day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.round-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;}
+.round-btn:active{background:var(--surface-alt)}
+.day-title{text-align:center;}
+.day-title .date{font-family:'Fraunces',serif;font-weight:600;font-size:17px;text-transform:capitalize;}
+.day-title .today-tag{font-size:11px;color:var(--accent);font-weight:600;margin-top:1px;}
+
+/* banners */
+.banner{border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.banner-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:3px;}
+.banner-title{font-weight:600;font-size:14.5px;}
+.banner.vos{background:var(--ok-bg);} .banner.vos .banner-eyebrow{color:var(--ok);}
+.banner.martina{background:var(--surface-alt);} .banner.martina .banner-eyebrow{color:var(--text-2);}
+.banner.warn{background:var(--warn-bg);} .banner.warn .banner-eyebrow{color:var(--warn);}
+.banner.danger{background:var(--danger-bg);} .banner.danger .banner-eyebrow{color:var(--danger);}
+
+/* segmented */
+.segmented{display:flex;background:var(--surface-alt);border-radius:9px;padding:3px;margin-bottom:14px;}
+.segmented button{flex:1;border:none;background:transparent;padding:8px 4px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--text-2);}
+.segmented button.active{background:var(--surface);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(36,39,42,0.06);}
+
+/* timeline item */
+.tl-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 1px 2px rgba(36,39,42,0.04),0 2px 6px rgba(36,39,42,0.05);}
+.tl-item.conflict{border-color:var(--danger);background:var(--danger-bg);}
+.tl-bar{width:3px;align-self:stretch;border-radius:3px;flex-shrink:0;min-height:34px;}
+.tl-time{font-size:11.5px;color:var(--text-3);margin-bottom:2px;}
+.tl-label{font-size:13.5px;font-weight:600;}
+.tl-conflict-icon{margin-left:auto;color:var(--danger);font-size:13px;flex-shrink:0;}
+
+/* grid view */
+.grid-wrap{position:relative;border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden;}
+.grid-hour{display:flex;border-top:1px solid var(--border);height:44px;}
+.grid-hour:first-child{border-top:none;}
+.grid-hour-label{width:44px;flex-shrink:0;font-size:10px;color:var(--text-3);padding:3px 0 0 6px;}
+.grid-track{flex:1;position:relative;border-left:1px solid var(--border);}
+.grid-block{position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 6px;font-size:10.5px;font-weight:600;color:#fff;overflow:hidden;line-height:1.25;box-shadow:0 1px 2px rgba(0,0,0,0.08);}
+.grid-block.conflict{outline:2px solid var(--danger);outline-offset:-2px;}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 16px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* week view */
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:18px;}
+.week-day{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.week-day-abbr{font-size:10px;color:var(--text-3);text-transform:uppercase;}
+.week-day-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;}
+.week-day-num.today{background:var(--accent);color:#fff;}
+.week-bar{width:100%;height:64px;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;background:var(--surface-alt);}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:11px;box-shadow:0 1px 2px rgba(36,39,42,0.04),0 2px 6px rgba(36,39,42,0.05);}
+.card-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.card-title{font-family:'Fraunces',serif;font-weight:600;font-size:15.5px;}
+.card-desc{font-size:12.5px;color:var(--text-2);margin-top:2px;}
+.badge{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
+.badge.iniciar{background:var(--surface-alt);color:var(--text-2);}
+.badge.curso{background:var(--warn-bg);color:var(--warn);}
+.badge.entregado{background:var(--ok-bg);color:var(--ok);}
+.progress-track{height:5px;border-radius:4px;background:var(--surface-alt);margin:10px 0 8px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:4px;}
+.card-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);}
+.card-meta strong{color:var(--text);font-weight:600;}
+
+/* section headers */
+.section-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin:20px 0 10px;}
+.section-title:first-child{margin-top:0;}
+
+/* buttons */
+.btn{border:none;border-radius:9px;padding:11px 16px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:active{background:var(--accent-hover);}
+.btn-primary:disabled{background:var(--border-strong);color:var(--text-3);}
+.btn-secondary{background:var(--surface-alt);color:var(--text);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-block{width:100%;}
+.btn-ghost{background:transparent;color:var(--accent);}
+
+/* bottom nav */
+.tabbar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:6px 6px calc(env(safe-area-inset-bottom,0px) + 6px);z-index:6;}
+.tab-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;color:var(--text-3);font-size:10px;font-weight:500;}
+.tab-btn.active{color:var(--accent);}
+.tab-btn svg{width:21px;height:21px;}
+
+/* FAB */
+.fab{position:fixed;right:calc(50% - 260px + 18px);bottom:86px;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:26px;box-shadow:0 4px 14px rgba(122,90,58,0.4);display:flex;align-items:center;justify-content:center;z-index:7;}
+@media (max-width:556px){.fab{right:18px;}}
+
+/* sheet / modal */
+.overlay{position:fixed;inset:0;background:rgba(36,39,42,0.42);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 150ms ease both;}
+.sheet{width:100%;max-width:520px;background:var(--surface);border-radius:20px 20px 0 0;max-height:88vh;overflow-y:auto;animation:sheetUp 200ms ease both;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);}
+.sheet-handle{width:36px;height:4px;background:var(--border-strong);border-radius:3px;margin:10px auto 4px;}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 4px;}
+.sheet-title{font-family:'Fraunces',serif;font-weight:600;font-size:16.5px;}
+.sheet-close{width:28px;height:28px;border-radius:50%;background:var(--surface-alt);border:none;color:var(--text-2);font-size:15px;display:flex;align-items:center;justify-content:center;}
+.sheet-body{padding:10px 18px 4px;}
+
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;}
+.field input[type=text],.field input[type=number],.field input[type=date],.field input[type=time],.field textarea,.field select{
+  width:100%;border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13.5px;background:var(--surface);color:var(--text);
+}
+.field textarea{resize:vertical;min-height:60px;}
+.field-row{display:flex;gap:10px;}
+.field-row .field{flex:1;}
+
+.days-toggle{display:flex;gap:5px;flex-wrap:wrap;}
+.day-chip{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:11.5px;font-weight:600;color:var(--text-2);}
+.day-chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+.action-item{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--border);}
+.action-item:last-child{border-bottom:none;}
+.action-icon{width:36px;height:36px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.action-label{font-size:13.5px;font-weight:600;}
+
+.overlap-note{font-size:12px;padding:9px 11px;border-radius:8px;margin-bottom:12px;display:flex;gap:7px;align-items:flex-start;}
+.overlap-note.warn{background:var(--warn-bg);color:var(--warn);}
+.overlap-note.danger{background:var(--danger-bg);color:var(--danger);}
+
+/* checklist */
+.check-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.check-row:last-child{border-bottom:none;}
+.check-box{width:19px;height:19px;border-radius:5px;border:1.6px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--surface);}
+.check-box.done{background:var(--ok);border-color:var(--ok);}
+.check-text{font-size:13.5px;flex:1;}
+.check-text.done{color:var(--text-3);text-decoration:line-through;}
+.check-del{color:var(--text-3);font-size:15px;background:none;border:none;padding:2px 4px;}
+
+.photo-row{display:flex;gap:8px;margin-top:6px;}
+.photo-slot{flex:1;aspect-ratio:1;border:1.5px dashed var(--border-strong);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:10px;text-align:center;padding:4px;}
+
+.palette-row{display:flex;gap:10px;margin-top:6px;}
+.palette-opt{flex:1;border-radius:11px;border:2px solid var(--border);padding:8px;}
+.palette-opt.active{border-color:var(--accent);}
+.palette-swatches{display:flex;gap:3px;margin-bottom:6px;}
+.palette-swatches span{width:14px;height:14px;border-radius:50%;}
+.palette-opt-label{font-size:11px;font-weight:600;}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+.toggle-row:last-child{border-bottom:none;}
+.toggle-row-label{font-size:13.5px;font-weight:500;}
+.toggle-row-sub{font-size:11.5px;color:var(--text-3);margin-top:1px;}
+.switch{width:44px;height:26px;border-radius:20px;background:var(--border-strong);border:none;position:relative;flex-shrink:0;}
+.switch.on{background:var(--accent);}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 150ms ease;box-shadow:0 1px 2px rgba(0,0,0,0.2);}
+.switch.on::after{transform:translateX(18px);}
+
+.custody-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px;}
+.custody-cell{text-align:center;}
+.custody-cell-date{font-size:9px;color:var(--text-3);margin-bottom:3px;}
+.custody-cell-btn{width:100%;height:34px;border-radius:7px;border:1px solid var(--border);font-size:11px;font-weight:700;}
+.custody-cell-btn.vos{background:var(--ok-bg);color:var(--ok);border-color:transparent;}
+.custody-cell-btn.martina{background:var(--surface-alt);color:var(--text-2);border-color:transparent;}
+.custody-week-label{font-size:10.5px;font-weight:600;color:var(--text-3);margin:10px 0 3px;text-transform:uppercase;letter-spacing:0.02em;}
+
+.activity-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:10px;}
+.activity-row:last-child{border-bottom:none;}
+.activity-name{font-size:13.5px;font-weight:600;}
+.activity-sub{font-size:11.5px;color:var(--text-3);margin-top:1px;}
+.remove-x{background:none;border:none;color:var(--text-3);font-size:17px;flex-shrink:0;}
+
+.empty-state{text-align:center;padding:34px 16px;color:var(--text-3);font-size:13px;}
+
+.detail-label{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.03em;margin:16px 0 8px;}
+.detail-label:first-of-type{margin-top:2px;}
+.detail-line{font-size:13.5px;margin-bottom:3px;}
+.add-task-row{display:flex;gap:8px;margin-top:8px;}
+.add-task-row input{flex:1;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ===================== ESTADO Y PERSISTENCIA ===================== */
+const STORAGE_KEY = 'agendaTallerState_v1';
+
+function defaultState(){
+  return {
+    tab: 'hoy',
+    dayOffset: 0,
+    homeLayout: 'timeline',
+    semanaBase: 'vos',
+    palette: 'calida',
+    custodyPattern: {
+      vos:     {0:'vos', 1:'martina', 2:'vos', 3:'martina', 4:'vos', 5:'vos', 6:'vos'},
+      martina: {0:'martina', 1:'vos', 2:'martina', 3:'vos', 4:'martina', 5:'martina', 6:'martina'}
+    },
+    workStart: '09:00',
+    workEnd: '17:00',
+    martinaStart: '08:00',
+    jardinStart: '11:00',
+    jardinEnd: '17:00',
+    tardeEnd: '21:00',
+    overlapMode: 'avisar',
+    fixedActivities: [],
+    pedidos: [],
+    domicilioVisits: []
+  };
+}
+
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultState(), parsed);
+  }catch(e){
+    console.error('No se pudo leer el estado guardado, uso valores por defecto.', e);
+    return defaultState();
+  }
+}
+
+function save(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('No se pudo guardar', e);
+  }
+}
+
+/* ===================== UTILIDADES DE FECHA/HORA ===================== */
+const DIAS_ABBR = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DIAS_LARGOS = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function stripTime(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function sameDay(a,b){ return stripTime(a).getTime() === stripTime(b).getTime(); }
+// Lunes=0 ... Domingo=6
+function weekdayIdx(d){ return (d.getDay()+6)%7; }
+function mondayOf(d){ return addDays(stripTime(d), -weekdayIdx(d)); }
+
+function toMin(hhmm){ const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
+function toHHMM(min){
+  min = ((min%1440)+1440)%1440;
+  const h = Math.floor(min/60), m = min%60;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+}
+function fmtHora(hhmm){ return hhmm + ' hs'; }
+function fmtRango(a,b){ return fmtHora(a) + ' – ' + fmtHora(b); }
+
+function fechaDeInput(dateStr){ // 'YYYY-MM-DD' -> Date local
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function inputDeFecha(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fmtFechaCorta(d){ return `${d.getDate()} ${MESES[d.getMonth()].slice(0,3)}`; }
+function fmtFechaLarga(d){ return `${d.getDate()} de ${MESES[d.getMonth()]}`; }
+
+function currentDay(){ return addDays(stripTime(new Date()), state.dayOffset); }
+
+/* ===================== LÓGICA DE CUSTODIA (núcleo, reimplementado tal cual el handoff) ===================== */
+
+// Qué patrón (nombre de configuración 'vos'/'martina') aplica a la semana de esta fecha
+function appliedPattern(date){
+  const monday = mondayOf(date);
+  const currentMonday = mondayOf(new Date());
+  const diffWeeks = Math.round((monday - currentMonday) / (7*86400000));
+  const parity = ((diffWeeks % 2) + 2) % 2;
+  if(parity === 0) return state.semanaBase;
+  return state.semanaBase === 'vos' ? 'martina' : 'vos';
+}
+
+// Quién tiene el pernocte de la noche que EMPIEZA en `date` (según el patrón aplicado a la semana de esa fecha)
+function overnightOwner(date){
+  const applied = appliedPattern(date);
+  const idx = weekdayIdx(date);
+  return state.custodyPattern[applied][idx];
+}
+
+// Genera los bloques de custodia (dónde está Julia) para un día completo
+function custodySegments(date){
+  const idx = weekdayIdx(date); // 0=Lun ... 6=Dom
+  const applied = appliedPattern(date);
+  const segs = [];
+  if(idx <= 4){ // Lunes a viernes
+    const prev = addDays(date, -1);
+    const morningOwner = overnightOwner(prev);   // noche que terminó esta mañana
+    const eveningOwner = overnightOwner(date);    // noche que empieza esta noche
+    segs.push({start:'00:00', end: state.martinaStart, cat: morningOwner, label: (morningOwner==='vos'?'Con vos':'Con Martina') + ' (durmiendo)'});
+    segs.push({start: state.martinaStart, end: state.jardinStart, cat:'martina', label:'Con Martina'});
+    segs.push({start: state.jardinStart, end: state.jardinEnd, cat:'jardin', label:'Jardín / con la abuela'});
+    segs.push({start: state.jardinEnd, end: state.tardeEnd, cat:'vos', label:'Con vos'});
+    segs.push({start: state.tardeEnd, end:'24:00', cat: eveningOwner, label: eveningOwner==='vos'?'Con vos':'Con Martina'});
+  } else if(idx === 5){ // Sábado
+    const weekendOwner = applied; // patrón A ('vos') = finde con el usuario
+    const prev = addDays(date, -1);
+    const morningOwner = overnightOwner(prev);
+    if(weekendOwner === 'vos'){
+      segs.push({start:'00:00', end:'08:00', cat: morningOwner, label:(morningOwner==='vos'?'Con vos':'Con Martina')+' (durmiendo)'});
+      segs.push({start:'08:00', end:'12:00', cat:'tercero', label:'Cuidado de un tercero de confianza'});
+      segs.push({start:'12:00', end:'24:00', cat:'vos', label:'Con vos'});
+    } else {
+      segs.push({start:'00:00', end:'24:00', cat:'martina', label:'Con Martina'});
+    }
+  } else { // Domingo
+    const weekendOwner = applied;
+    segs.push({start:'00:00', end:'24:00', cat: weekendOwner, label: weekendOwner==='vos'?'Con vos':'Con Martina'});
+  }
+  return segs;
+}
+
+// Todos los items del día: custodia + trabajo + actividades fijas + visitas a domicilio + entregas de pedidos, con conflicto marcado
+function dayItems(date){
+  const idx = weekdayIdx(date);
+  const items = [];
+  custodySegments(date).forEach(s => items.push(Object.assign({type:'custodia'}, s)));
+
+  if(idx <= 4){ // turno fijo Lun-Vie
+    items.push({type:'trabajo', start: state.workStart, end: state.workEnd, cat:'trabajo', label:'Turno fijo'});
+  }
+
+  state.fixedActivities.forEach(a=>{
+    if(a.days.includes(idx)){
+      items.push({type:'actividad', start:a.start, end:a.end, cat:'actividad', label:a.name, refId:a.id});
+    }
+  });
+
+  state.domicilioVisits.forEach(v=>{
+    if(sameDay(fechaDeInput(v.fecha), date)){
+      items.push({type:'visita', start:v.inicio, end:v.fin, cat:'domicilio', label:'Visita: '+v.cliente, refId:v.id});
+    }
+  });
+
+  // marcar conflicto: cualquier item de trabajo/actividad/visita que se cruce con un tramo "con vos"
+  const vosRanges = items.filter(i=>i.cat==='vos').map(i=>[toMin(i.start), toMin(i.end)]);
+  items.forEach(i=>{
+    if(['trabajo','actividad','visita'].includes(i.type)){
+      const a1=toMin(i.start), a2=toMin(i.end);
+      i.conflict = vosRanges.some(([b1,b2]) => a1 < b2 && b1 < a2);
+    } else {
+      i.conflict = false;
+    }
+  });
+
+  items.sort((a,b)=> toMin(a.start) - toMin(b.start));
+  return items;
+}
+
+// Detección de superposición para el formulario de VISITA A DOMICILIO en una fecha/hora dada
+function checkOverlapVisita(fecha, inicio, fin, ignoreId){
+  const date = fechaDeInput(fecha);
+  const busy = [];
+  custodySegments(date).forEach(s=>{ if(s.cat==='vos' || s.cat==='tercero') busy.push([toMin(s.start), toMin(s.end)]); });
+  const idx = weekdayIdx(date);
+  state.fixedActivities.forEach(a=>{ if(a.days.includes(idx)) busy.push([toMin(a.start), toMin(a.end)]); });
+  state.domicilioVisits.forEach(v=>{
+    if(v.id===ignoreId) return;
+    if(sameDay(fechaDeInput(v.fecha), date)) busy.push([toMin(v.inicio), toMin(v.fin)]);
+  });
+  const a1=toMin(inicio), a2=toMin(fin);
+  return busy.some(([b1,b2])=> a1<b2 && b1<a2);
+}
+
+// Detección de superposición para ACTIVIDAD FIJA (recurrente semanal) — se chequea contra ambos patrones posibles
+function checkOverlapActividad(days, inicio, fin, ignoreId){
+  const a1=toMin(inicio), a2=toMin(fin);
+  let conflict = false;
+  days.forEach(idx=>{
+    const busy = [[toMin(state.workStart), toMin(state.workEnd)]];
+    ['vos','martina'].forEach(pattern=>{
+      const owner = state.custodyPattern[pattern][idx];
+      // aproximación: si esa noche/día weekday es 'vos', el bloque fijo de tarde (jardinEnd-tardeEnd) siempre es con vos entre semana
+      if(idx<=4){
+        busy.push([toMin(state.jardinEnd), toMin(state.tardeEnd)]);
+        if(owner==='vos') busy.push([toMin(state.tardeEnd), 24*60]);
+      } else if(idx===5 && pattern==='vos'){
+        busy.push([12*60, 24*60]);
+      } else if(idx===6 && pattern==='vos'){
+        busy.push([0, 24*60]);
+      }
+    });
+    state.fixedActivities.forEach(o=>{ if(o.id!==ignoreId && o.days.includes(idx)) busy.push([toMin(o.start), toMin(o.end)]); });
+    if(busy.some(([b1,b2])=> a1<b2 && b1<a2)) conflict = true;
+  });
+  return conflict;
+}
+
+/* ===================== ÍCONOS (SVG lineales, stroke) ===================== */
+const ICONS = {
+  hoy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 2.5v4M16 2.5v4"/></svg>`,
+  semana: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"/></svg>`,
+  pedidos: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>`,
+  ajustes: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10a1.7 1.7 0 0 0 1-1.55V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10a1.7 1.7 0 0 0 1.55 1h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5.5 5.5L20 6.5"/></svg>`,
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>`,
+  visit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>`,
+  order: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7"/></svg>`,
+  warn: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2L12 3.5Z"/><path d="M12 10v4.2M12 17.3h.01"/></svg>`
+};
+
+/* ===================== SHEET / MODAL genérico ===================== */
+let sheetState = null; // { type, data }
+
+function openSheet(type, data){ sheetState = {type, data: data || {}}; render(); }
+function closeSheet(){ sheetState = null; render(); }
+
+/* ===================== EVENT HELPERS ===================== */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ===================== RENDER: HOY ===================== */
+function renderHoy(){
+  const date = currentDay();
+  const isToday = sameDay(date, new Date());
+  const idx = weekdayIdx(date);
+  const items = dayItems(date);
+
+  const owner = idx<=4 ? overnightOwner(date) : (idx===5 ? appliedPattern(date) : appliedPattern(date));
+  // banner principal: con quién duerme HOY a la noche
+  let bannerCat = 'vos';
+  if(idx<=4) bannerCat = overnightOwner(date);
+  else if(idx===5) bannerCat = appliedPattern(date);
+  else bannerCat = appliedPattern(date);
+
+  let banners = '';
+  banners += `<div class="banner ${bannerCat==='vos'?'vos':'martina'}">
+    <div class="banner-eyebrow">Julia Margarita</div>
+    <div class="banner-title">Esta noche duerme ${bannerCat==='vos'?'con vos':'con Martina'}</div>
+  </div>`;
+
+  if(idx===5 && appliedPattern(date)==='vos'){
+    banners += `<div class="banner warn">
+      <div class="banner-eyebrow">⚠ Cuidado de un tercero</div>
+      <div class="banner-title">Organizá vos el cuidado de 08:00 hs a 12:00 hs</div>
+    </div>`;
+  }
+
+  const hasConflict = items.some(i=>i.conflict);
+  if(hasConflict){
+    banners += `<div class="banner danger">
+      <div class="banner-eyebrow">⚠ Cruce de horarios</div>
+      <div class="banner-title">Hoy tenés un evento que se superpone con el tiempo con Julia</div>
+    </div>`;
+  }
+
+  let content = '';
+  if(state.homeLayout === 'timeline'){
+    content = items.map(i=>`
+      <div class="tl-item ${i.conflict?'conflict':''}">
+        <div class="tl-bar" style="background:var(--c-${i.cat})"></div>
+        <div style="flex:1">
+          <div class="tl-time">${fmtRango(i.start,i.end)}</div>
+          <div class="tl-label">${esc(i.label)}</div>
+        </div>
+        ${i.conflict?`<div class="tl-conflict-icon">⚠</div>`:''}
+      </div>
+    `).join('') || `<div class="empty-state">Sin eventos este día.</div>`;
+  } else {
+    const HOUR_H = 44, START_H = 7, END_H = 23;
+    const hourRows = [];
+    for(let h=START_H; h<END_H; h++){
+      hourRows.push(`<div class="grid-hour"><div class="grid-hour-label">${String(h).padStart(2,'0')}:00</div><div class="grid-track" data-h="${h}"></div></div>`);
+    }
+    const totalMin = (END_H-START_H)*60;
+    const blocks = items.map(i=>{
+      let s = toMin(i.start), e = toMin(i.end);
+      if(e<=s) e = 24*60;
+      s = Math.max(s, START_H*60); e = Math.min(e, END_H*60);
+      if(e<=s) return '';
+      const top = (s-START_H*60)/totalMin*(HOUR_H*(END_H-START_H));
+      const h = (e-s)/totalMin*(HOUR_H*(END_H-START_H));
+      return `<div class="grid-block ${i.conflict?'conflict':''}" style="top:${top+2}px;height:${Math.max(h-2,14)}px;background:var(--c-${i.cat})">${esc(i.label)}</div>`;
+    }).join('');
+    content = `<div class="grid-wrap" style="position:relative">${hourRows.join('')}<div style="position:absolute;top:0;left:44px;right:0;bottom:0">${blocks}</div></div>`;
+  }
+
+  return `
+  <div class="screen">
+    <div class="day-nav">
+      <button class="round-btn" onclick="navDay(-1)">‹</button>
+      <div class="day-title">
+        <div class="date">${DIAS_LARGOS[idx].charAt(0).toUpperCase()+DIAS_LARGOS[idx].slice(1)} ${fmtFechaLarga(date)}</div>
+        ${isToday?'<div class="today-tag">HOY</div>':''}
+      </div>
+      <button class="round-btn" onclick="navDay(1)">›</button>
+    </div>
+    ${banners}
+    <div class="segmented">
+      <button class="${state.homeLayout==='timeline'?'active':''}" onclick="setLayout('timeline')">Línea de tiempo</button>
+      <button class="${state.homeLayout==='grid'?'active':''}" onclick="setLayout('grid')">Vista grilla</button>
+    </div>
+    ${content}
+  </div>
+  <button class="fab" onclick="openSheet('fabMenu')">+</button>
+  `;
+}
+
+function navDay(n){ state.dayOffset += n; render(); }
+function setLayout(l){ state.homeLayout = l; render(); }
+
+/* ===================== RENDER: SEMANA ===================== */
+function renderSemana(){
+  const monday = mondayOf(currentDay());
+  const days = [0,1,2,3,4,5,6].map(n=>addDays(monday,n));
+
+  const cols = days.map(d=>{
+    const items = custodySegments(d);
+    const total = 24*60;
+    const bars = items.map(s=>{
+      const s1=toMin(s.start), s2 = s.end==='24:00'?1440:toMin(s.end);
+      const h = (s2-s1)/total*64;
+      return `<div style="height:${h}px;background:var(--c-${s.cat})"></div>`;
+    }).join('');
+    const isToday = sameDay(d, new Date());
+    return `<div class="week-day">
+      <div class="week-day-abbr">${DIAS_ABBR[weekdayIdx(d)]}</div>
+      <div class="week-day-num ${isToday?'today':''}">${d.getDate()}</div>
+      <div class="week-bar">${bars}</div>
+    </div>`;
+  }).join('');
+
+  const legend = [
+    ['vos','Con vos'],['martina','Con Martina'],['jardin','Jardín / abuela'],['trabajo','Turno fijo'],['domicilio','Visita a domicilio'],['actividad','Actividad fija']
+  ].map(([cat,label])=>`<div class="legend-item"><div class="legend-dot" style="background:var(--c-${cat})"></div>${label}</div>`).join('');
+
+  const weekEnd = addDays(monday,6);
+  const pedidosSemana = state.pedidos.filter(p=>{
+    if(!p.entrega) return false;
+    const f = fechaDeInput(p.entrega);
+    return f >= monday && f <= weekEnd;
+  });
+
+  const listaPedidos = pedidosSemana.length ? pedidosSemana.map(p=>`
+    <div class="card" onclick="openSheet('pedidoDetalle',{id:'${p.id}'})">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${esc(p.cliente)}</div>
+          <div class="card-desc">${esc(p.descripcion||'')}</div>
+        </div>
+      </div>
+      <div class="card-meta" style="margin-top:8px"><span>Entrega</span><strong>${fmtFechaCorta(fechaDeInput(p.entrega))}</strong></div>
+    </div>
+  `).join('') : `<div class="empty-state">No hay entregas esta semana.</div>`;
+
+  return `
+  <div class="screen">
+    <div class="section-title" style="margin-top:0">Semana del ${fmtFechaCorta(monday)} al ${fmtFechaCorta(weekEnd)}</div>
+    <div class="week-grid">${cols}</div>
+    <div class="legend">${legend}</div>
+    <div class="section-title">Entregas de la semana</div>
+    ${listaPedidos}
+  </div>
+  `;
+}
+
+/* ===================== RENDER: PEDIDOS ===================== */
+function estadoPedido(p){
+  const hoy = stripTime(new Date());
+  if(!p.inicio || !p.entrega) return {key:'iniciar', label:'Por iniciar', pct:0};
+  const ini = fechaDeInput(p.inicio), fin = fechaDeInput(p.entrega);
+  if(hoy < ini) return {key:'iniciar', label:'Por iniciar', pct:0};
+  if(hoy >= fin) return {key:'entregado', label:'Entregado', pct:100};
+  const pct = Math.round(((hoy-ini)/(fin-ini))*100);
+  return {key:'curso', label:'En curso', pct: Math.min(Math.max(pct,4),96)};
+}
+
+function renderPedidos(){
+  const cards = state.pedidos.length ? state.pedidos.map(p=>{
+    const est = estadoPedido(p);
+    return `<div class="card" onclick="openSheet('pedidoDetalle',{id:'${p.id}'})">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${esc(p.cliente)}</div>
+          <div class="card-desc">${esc(p.descripcion||'')}</div>
+        </div>
+        <div class="badge ${est.key}">${est.label}</div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${est.pct}%"></div></div>
+      <div class="card-meta">
+        <span>${p.inicio?fmtFechaCorta(fechaDeInput(p.inicio)):'—'} – ${p.entrega?fmtFechaCorta(fechaDeInput(p.entrega)):'—'}</span>
+        <strong>${p.precio?('$'+Number(p.precio).toLocaleString('es-AR')):''}</strong>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty-state">Todavía no cargaste pedidos.</div>`;
+
+  const visitas = state.domicilioVisits.slice().sort((a,b)=> (a.fecha+a.inicio).localeCompare(b.fecha+b.inicio));
+  const visitasHtml = visitas.length ? visitas.map(v=>{
+    const conflict = checkOverlapVisita(v.fecha, v.inicio, v.fin, v.id);
+    return `<div class="card" onclick="openSheet('visita',{id:'${v.id}'})">
+      <div class="card-row">
+        <div>
+          <div class="card-title" style="font-size:14px">${esc(v.cliente)}</div>
+          <div class="card-desc">${esc(v.direccion||'')}</div>
+        </div>
+        ${conflict?'<div class="tl-conflict-icon">⚠</div>':''}
+      </div>
+      <div class="card-meta" style="margin-top:8px"><span>${fmtFechaCorta(fechaDeInput(v.fecha))}</span><strong>${fmtRango(v.inicio,v.fin)}</strong></div>
+    </div>`;
+  }).join('') : `<div class="empty-state">No hay visitas agendadas.</div>`;
+
+  return `
+  <div class="screen">
+    <div class="card-row" style="margin-bottom:12px">
+      <div class="section-title" style="margin:0">Pedidos</div>
+      <button class="btn btn-primary" onclick="openSheet('pedidoForm')">+ Nuevo</button>
+    </div>
+    ${cards}
+    <div class="section-title">Visitas a domicilio agendadas</div>
+    ${visitasHtml}
+    <button class="btn btn-secondary btn-block" onclick="openSheet('visita')">+ Agendar visita</button>
+  </div>
+  `;
+}
+
+/* ===================== RENDER: AJUSTES ===================== */
+function renderAjustes(){
+  const monday = mondayOf(currentDay());
+  const weeks = [
+    {key: state.semanaBase, label:'Esta semana (semana actual)', offset:0},
+    {key: state.semanaBase==='vos'?'martina':'vos', label:'Semana siguiente (alternada)', offset:7}
+  ];
+
+  const custodyRows = weeks.map(w=>{
+    const cells = [0,1,2,3,4,5,6].map(idx=>{
+      const d = addDays(monday, w.offset+idx);
+      const val = state.custodyPattern[w.key][idx];
+      const showMonth = d.getDate()===1;
+      return `<div class="custody-cell">
+        <div class="custody-cell-date">${DIAS_ABBR[idx]}${showMonth?' '+MESES[d.getMonth()].slice(0,3):''} ${d.getDate()}</div>
+        <button class="custody-cell-btn ${val}" onclick="toggleCustodyCell('${w.key}',${idx})">${val==='vos'?'YO':'M'}</button>
+      </div>`;
+    }).join('');
+    return `<div class="custody-week-label">${w.label}</div><div class="custody-grid">${cells}</div>`;
+  }).join('');
+
+  const actividades = state.fixedActivities.length ? state.fixedActivities.map(a=>`
+    <div class="activity-row">
+      <div>
+        <div class="activity-name">${esc(a.name)}</div>
+        <div class="activity-sub">${a.days.map(d=>DIAS_ABBR[d]).join(' ')} · ${fmtRango(a.start,a.end)}</div>
+      </div>
+      <button class="remove-x" onclick="removeActivity('${a.id}')">×</button>
+    </div>
+  `).join('') : `<div class="empty-state" style="padding:16px 0">Sin actividades fijas.</div>`;
+
+  const palettes = [
+    {key:'calida', label:'Cálida', colors:['#3B6D11','#8B98A0','#8A5410','#4B4D4F','#7A5A3A']},
+    {key:'fria', label:'Fría', colors:['#3D6B6B','#8B98A0','#8A5410','#2C2A28','#7A5A3A']},
+    {key:'minimal', label:'Minimal', colors:['#3B6D11','#ACAFB1','#8C8F91','#4B4D4F','#7A5A3A']}
+  ].map(p=>`
+    <button class="palette-opt ${state.palette===p.key?'active':''}" onclick="setPalette('${p.key}')" style="text-align:left">
+      <div class="palette-swatches">${p.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>
+      <div class="palette-opt-label">${p.label}</div>
+    </button>
+  `).join('');
+
+  return `
+  <div class="screen">
+    <div class="section-title" style="margin-top:0">Esquema de cuidado</div>
+    <div class="toggle-row" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div>
+        <div class="toggle-row-label">Esta semana el fin de semana es de:</div>
+        <div class="toggle-row-sub">${state.semanaBase==='vos'?'Vos':'Martina'}</div>
+      </div>
+      <button class="switch ${state.semanaBase==='martina'?'on':''}" onclick="toggleSemanaBase()"></button>
+    </div>
+
+    <div class="section-title">Pernocte por día (ciclo de 14 días)</div>
+    ${custodyRows}
+
+    <div class="section-title">Horarios fijos</div>
+    <div class="field-row">
+      <div class="field"><label>Turno — inicio</label><input type="time" value="${state.workStart}" onchange="updateHorario('workStart',this.value)"></div>
+      <div class="field"><label>Turno — fin</label><input type="time" value="${state.workEnd}" onchange="updateHorario('workEnd',this.value)"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Con Martina desde</label><input type="time" value="${state.martinaStart}" onchange="updateHorario('martinaStart',this.value)"></div>
+      <div class="field"><label>La lleva al jardín</label><input type="time" value="${state.jardinStart}" onchange="updateHorario('jardinStart',this.value)"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Jardín — fin</label><input type="time" value="${state.jardinEnd}" onchange="updateHorario('jardinEnd',this.value)"></div>
+      <div class="field"><label>Corte de tu cuidado (tarde)</label><input type="time" value="${state.tardeEnd}" onchange="updateHorario('tardeEnd',this.value)"></div>
+    </div>
+
+    <div class="section-title">Actividades fijas semanales</div>
+    ${actividades}
+    <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="openSheet('actividadForm')">+ Agregar actividad</button>
+
+    <div class="section-title">Modo ante superposición laboral/personal</div>
+    <div class="toggle-row" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div>
+        <div class="toggle-row-label">${state.overlapMode==='bloquear'?'Bloquear si hay cruce':'Avisar si hay cruce'}</div>
+        <div class="toggle-row-sub">${state.overlapMode==='bloquear'?'No deja guardar si se superpone con Julia':'Muestra advertencia pero permite guardar'}</div>
+      </div>
+      <button class="switch ${state.overlapMode==='bloquear'?'on':''}" onclick="toggleOverlapMode()"></button>
+    </div>
+
+    <div class="section-title">Paleta de colores</div>
+    <div class="palette-row">${palettes}</div>
+  </div>
+  `;
+}
+
+function toggleCustodyCell(patternKey, idx){
+  const cur = state.custodyPattern[patternKey][idx];
+  state.custodyPattern[patternKey][idx] = cur==='vos' ? 'martina' : 'vos';
+  save(); render();
+}
+function toggleSemanaBase(){ state.semanaBase = state.semanaBase==='vos'?'martina':'vos'; save(); render(); }
+function toggleOverlapMode(){ state.overlapMode = state.overlapMode==='avisar'?'bloquear':'avisar'; save(); render(); }
+function updateHorario(key,val){ state[key]=val; save(); render(); }
+function setPalette(p){ state.palette=p; save(); render(); }
+function removeActivity(id){ state.fixedActivities = state.fixedActivities.filter(a=>a.id!==id); save(); render(); }
+
+/* ===================== SHEETS: formularios ===================== */
+function renderSheet(){
+  if(!sheetState) return '';
+  const {type, data} = sheetState;
+  let title = '', body = '';
+
+  if(type==='fabMenu'){
+    title = 'Nuevo';
+    body = `
+      <div class="action-item" onclick="closeSheet(); openSheet('actividadForm')">
+        <div class="action-icon">${ICONS.home}</div>
+        <div class="action-label">Actividad personal fija</div>
+      </div>
+      <div class="action-item" onclick="closeSheet(); openSheet('visita')">
+        <div class="action-icon">${ICONS.visit}</div>
+        <div class="action-label">Visita a domicilio</div>
+      </div>
+      <div class="action-item" onclick="closeSheet(); openSheet('pedidoForm')">
+        <div class="action-icon">${ICONS.order}</div>
+        <div class="action-label">Nuevo pedido de cliente</div>
+      </div>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  if(type==='actividadForm'){
+    const d = data.draft || {name:'', days:[], start:'18:00', end:'19:00'};
+    sheetState.data.draft = d;
+    title = 'Actividad fija';
+    const conflict = d.days.length ? checkOverlapActividad(d.days, d.start, d.end) : false;
+    body = `
+      <div class="field"><label>Nombre</label><input type="text" id="f-name" value="${esc(d.name)}" placeholder="Ej: Gimnasio" oninput="draftUpdate('name',this.value)"></div>
+      <div class="field"><label>Días</label>
+        <div class="days-toggle">
+          ${DIAS_ABBR.map((ab,i)=>`<button type="button" class="day-chip ${d.days.includes(i)?'active':''}" onclick="toggleDraftDay(${i})">${ab.slice(0,2)}</button>`).join('')}
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Hora inicio</label><input type="time" value="${d.start}" onchange="draftUpdate('start',this.value)"></div>
+        <div class="field"><label>Hora fin</label><input type="time" value="${d.end}" onchange="draftUpdate('end',this.value)"></div>
+      </div>
+      ${conflict ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : ''}
+      <button class="btn btn-primary btn-block" ${(!d.name||!d.days.length)?'disabled':''} onclick="saveActividad()">Guardar actividad</button>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  if(type==='visita'){
+    const existing = data.id ? state.domicilioVisits.find(v=>v.id===data.id) : null;
+    const d = data.draft || (existing ? Object.assign({},existing) : {cliente:'', direccion:'', fecha: inputDeFecha(currentDay()), inicio:'18:30', fin:'19:30'});
+    sheetState.data.draft = d;
+    title = existing ? 'Editar visita' : 'Visita a domicilio';
+    const conflict = checkOverlapVisita(d.fecha, d.inicio, d.fin, existing?existing.id:null);
+    const bloqueado = conflict && state.overlapMode==='bloquear';
+    body = `
+      <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdate('cliente',this.value)"></div>
+      <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdate('direccion',this.value)"></div>
+      <div class="field"><label>Fecha</label><input type="date" value="${d.fecha}" onchange="draftUpdate('fecha',this.value)"></div>
+      <div class="field-row">
+        <div class="field"><label>Hora inicio</label><input type="time" value="${d.inicio}" onchange="draftUpdate('inicio',this.value)"></div>
+        <div class="field"><label>Hora fin</label><input type="time" value="${d.fin}" onchange="draftUpdate('fin',this.value)"></div>
+      </div>
+      ${conflict ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : ''}
+      <div style="display:flex;gap:8px">
+        ${existing?`<button class="btn btn-danger" onclick="deleteVisita('${existing.id}')">Eliminar</button>`:''}
+        <button class="btn btn-primary" style="flex:1" ${(!d.cliente||!d.fecha||bloqueado)?'disabled':''} onclick="saveVisita('${existing?existing.id:''}')">${bloqueado?'No se puede guardar (cruce)':'Guardar visita'}</button>
+      </div>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  if(type==='pedidoForm'){
+    const d = data.draft || {cliente:'', contacto:'', descripcion:'', direccion:'', inicio:'', entrega:'', precio:'', sena:'', materiales:''};
+    sheetState.data.draft = d;
+    title = 'Nuevo pedido';
+    body = `
+      <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdate('cliente',this.value)"></div>
+      <div class="field"><label>Contacto</label><input type="text" value="${esc(d.contacto)}" oninput="draftUpdate('contacto',this.value)"></div>
+      <div class="field"><label>Descripción</label><textarea oninput="draftUpdate('descripcion',this.value)">${esc(d.descripcion)}</textarea></div>
+      <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdate('direccion',this.value)"></div>
+      <div class="field-row">
+        <div class="field"><label>Fecha inicio</label><input type="date" value="${d.inicio}" onchange="draftUpdate('inicio',this.value)"></div>
+        <div class="field"><label>Fecha entrega</label><input type="date" value="${d.entrega}" onchange="draftUpdate('entrega',this.value)"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Precio</label><input type="number" value="${d.precio}" oninput="draftUpdate('precio',this.value)"></div>
+        <div class="field"><label>Seña</label><input type="number" value="${d.sena}" oninput="draftUpdate('sena',this.value)"></div>
+      </div>
+      <div class="field"><label>Materiales</label><textarea oninput="draftUpdate('materiales',this.value)">${esc(d.materiales)}</textarea></div>
+      <button class="btn btn-primary btn-block" ${!d.cliente?'disabled':''} onclick="savePedido()">Guardar pedido</button>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  if(type==='pedidoDetalle'){
+    const p = state.pedidos.find(x=>x.id===data.id);
+    if(!p) { closeSheet(); return ''; }
+    const est = estadoPedido(p);
+    title = p.cliente;
+    const checklist = (p.checklist||[]).map((c,i)=>`
+      <div class="check-row">
+        <button class="check-box ${c.done?'done':''}" onclick="toggleCheck('${p.id}',${i})">${c.done?ICONS.check:''}</button>
+        <div class="check-text ${c.done?'done':''}">${esc(c.text)}</div>
+        <button class="check-del" onclick="delCheck('${p.id}',${i})">×</button>
+      </div>
+    `).join('') || `<div class="empty-state" style="padding:10px 0">Sin tareas cargadas.</div>`;
+    body = `
+      <div class="badge ${est.key}" style="display:inline-block;margin-bottom:10px">${est.label}</div>
+      <div class="detail-label">Contacto</div>
+      <div class="detail-line">${esc(p.contacto||'—')}</div>
+      <div class="detail-line">${esc(p.direccion||'—')}</div>
+      <div class="detail-label">Fechas</div>
+      <div class="detail-line">${p.inicio?fmtFechaCorta(fechaDeInput(p.inicio)):'—'} → ${p.entrega?fmtFechaCorta(fechaDeInput(p.entrega)):'—'}</div>
+      <div class="detail-label">Precio</div>
+      <div class="detail-line">Total: ${p.precio?('$'+Number(p.precio).toLocaleString('es-AR')):'—'} · Seña: ${p.sena?('$'+Number(p.sena).toLocaleString('es-AR')):'—'} · Saldo: ${(p.precio&&p.sena)?('$'+(Number(p.precio)-Number(p.sena)).toLocaleString('es-AR')):'—'}</div>
+      <div class="detail-label">Materiales</div>
+      <div class="detail-line">${esc(p.materiales||'—')}</div>
+      <div class="detail-label">Checklist</div>
+      ${checklist}
+      <div class="add-task-row">
+        <input type="text" id="newTaskInput" placeholder="Nueva tarea">
+        <button class="btn btn-secondary" onclick="addCheck('${p.id}')">Agregar</button>
+      </div>
+      <div class="detail-label">Fotos de avance</div>
+      <div class="photo-row">
+        <div class="photo-slot">Foto 1</div>
+        <div class="photo-slot">Foto 2</div>
+        <div class="photo-slot">Foto 3</div>
+      </div>
+      <button class="btn btn-danger btn-block" style="margin-top:18px" onclick="deletePedido('${p.id}')">Eliminar pedido</button>
+    `;
+    return wrapSheet(title, body, true);
+  }
+
+  return '';
+}
+
+function wrapSheet(title, body, closable){
+  return `<div class="overlay" onclick="if(event.target===this) closeSheet()">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <div class="sheet-title">${esc(title)}</div>
+        <button class="sheet-close" onclick="closeSheet()">×</button>
+      </div>
+      <div class="sheet-body">${body}</div>
+    </div>
+  </div>`;
+}
+
+function draftUpdate(key,val){ sheetState.data.draft[key] = val; render(); }
+function toggleDraftDay(i){
+  const days = sheetState.data.draft.days;
+  const p = days.indexOf(i);
+  if(p===-1) days.push(i); else days.splice(p,1);
+  render();
+}
+
+function saveActividad(){
+  const d = sheetState.data.draft;
+  state.fixedActivities.push({id: uid(), name:d.name, days:d.days.slice(), start:d.start, end:d.end});
+  save(); closeSheet();
+}
+function saveVisita(existingId){
+  const d = sheetState.data.draft;
+  if(existingId){
+    const v = state.domicilioVisits.find(x=>x.id===existingId);
+    Object.assign(v, d);
+  } else {
+    state.domicilioVisits.push(Object.assign({id:uid()}, d));
+  }
+  save(); closeSheet();
+}
+function deleteVisita(id){ state.domicilioVisits = state.domicilioVisits.filter(v=>v.id!==id); save(); closeSheet(); }
+
+function savePedido(){
+  const d = sheetState.data.draft;
+  state.pedidos.push(Object.assign({id:uid(), checklist:[], fotos:[]}, d));
+  save(); closeSheet();
+}
+function deletePedido(id){ state.pedidos = state.pedidos.filter(p=>p.id!==id); save(); closeSheet(); }
+function addCheck(pid){
+  const input = document.getElementById('newTaskInput');
+  const text = input.value.trim();
+  if(!text) return;
+  const p = state.pedidos.find(x=>x.id===pid);
+  p.checklist = p.checklist || [];
+  p.checklist.push({text, done:false});
+  save(); render();
+}
+function toggleCheck(pid,i){ const p=state.pedidos.find(x=>x.id===pid); p.checklist[i].done = !p.checklist[i].done; save(); render(); }
+function delCheck(pid,i){ const p=state.pedidos.find(x=>x.id===pid); p.checklist.splice(i,1); save(); render(); }
+
+/* ===================== TAB BAR ===================== */
+function renderTabbar(){
+  const tabs = [['hoy','Hoy',ICONS.hoy], ['semana','Semana',ICONS.semana], ['pedidos','Pedidos',ICONS.pedidos], ['ajustes','Ajustes',ICONS.ajustes]];
+  return `<div class="tabbar">
+    ${tabs.map(([key,label,icon])=>`
+      <button class="tab-btn ${state.tab===key?'active':''}" onclick="setTab('${key}')">
+        ${icon}<span>${label}</span>
+      </button>
+    `).join('')}
+  </div>`;
+}
+function setTab(t){ state.tab = t; state.dayOffset = t==='hoy' ? state.dayOffset : state.dayOffset; save(); render(); }
+
+/* ===================== RENDER RAÍZ ===================== */
+function render(){
+  const app = document.getElementById('app');
+  let screenHtml = '';
+  if(state.tab==='hoy') screenHtml = renderHoy();
+  else if(state.tab==='semana') screenHtml = renderSemana();
+  else if(state.tab==='pedidos') screenHtml = renderPedidos();
+  else screenHtml = renderAjustes();
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-title">
+        <div class="logo serif">J</div>
+        <div class="header-name serif">Mi Semana</div>
+      </div>
+      <div class="header-sub">Julia · Taller</div>
+    </div>
+    <main>${screenHtml}</main>
+    ${renderTabbar()}
+    ${renderSheet()}
+  `;
+  document.body.setAttribute('data-palette', state.palette);
+}
+
+render();
+
+/* Registrar service worker si está disponible (uso offline) */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
