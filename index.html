@@ -89,6 +89,17 @@ main{flex:1;overflow-y:auto;padding-bottom:96px;position:relative;}
 
 /* week view */
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:18px;}
+
+/* month view */
+.month-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.month-dow{text-align:center;font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:600;}
+.month-grid{display:flex;flex-direction:column;gap:4px;}
+.month-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.month-cell{aspect-ratio:1;border-radius:9px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:2px;}
+.month-cell-num{font-size:12.5px;font-weight:600;color:var(--text);width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
+.month-cell-num.today{background:var(--accent);color:#fff;}
+.month-cell-dots{display:flex;gap:2px;height:6px;}
+.month-dot{width:5px;height:5px;border-radius:50%;}
 .week-day{display:flex;flex-direction:column;align-items:center;gap:6px;}
 .week-day-abbr{font-size:10px;color:var(--text-3);text-transform:uppercase;}
 .week-day-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;}
@@ -226,6 +237,7 @@ function defaultState(){
   return {
     tab: 'hoy',
     dayOffset: 0,
+    monthOffset: 0,
     homeLayout: 'timeline',
     semanaBase: 'vos',
     palette: 'calida',
@@ -498,7 +510,7 @@ function dayItems(date){
   custodySegments(date).forEach(s => items.push(Object.assign({type:'custodia'}, s)));
 
   if(idx <= 4 && !isHoliday(date)){ // turno fijo Lun-Vie, salvo feriado
-    items.push({type:'trabajo', start: state.workStart, end: state.workEnd, cat:'trabajo', label:'Turno fijo'});
+    items.push({type:'trabajo', start: state.workStart, end: state.workEnd, cat:'trabajo', label:'Trabajo '+nombre('user')});
   }
 
   state.fixedActivities.forEach(a=>{
@@ -649,6 +661,7 @@ function checkOverlapActividad(days, inicio, fin, ignoreId){
 const ICONS = {
   hoy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 2.5v4M16 2.5v4"/></svg>`,
   semana: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"/></svg>`,
+  mes: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><rect x="6.5" y="12" width="3.4" height="3.4" rx="0.9" fill="currentColor" stroke="none"/><rect x="14" y="12" width="3.4" height="3.4" rx="0.9" fill="currentColor" stroke="none"/></svg>`,
   pedidos: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>`,
   ajustes: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10a1.7 1.7 0 0 0 1-1.55V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10a1.7 1.7 0 0 0 1.55 1h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5.5 5.5L20 6.5"/></svg>`,
@@ -684,7 +697,7 @@ function renderHoy(){
   if(holidayLabel){
     banners += `<div class="banner" style="background:var(--accent-soft)">
       <div class="banner-eyebrow" style="color:var(--accent)">Feriado</div>
-      <div class="banner-title">${esc(holidayLabel)} — no hay turno fijo hoy</div>
+      <div class="banner-title">${esc(holidayLabel)} — no hay trabajo hoy</div>
     </div>`;
   }
   banners += `<div class="banner ${bannerCat==='vos'?'vos':'martina'}">
@@ -798,7 +811,7 @@ function renderSemana(){
   }).join('');
 
   const legend = [
-    ['vos',con('vos')],['martina',con('martina')],['jardin','Con '+nombre('abuela')],['trabajo','Turno fijo'],['domicilio','Visita a domicilio'],['actividad','Actividad fija']
+    ['vos',con('vos')],['martina',con('martina')],['jardin','Con '+nombre('abuela')],['trabajo','Trabajo '+nombre('user')],['domicilio','Visita a domicilio'],['actividad','Actividad fija']
   ].map(([cat,label])=>`<div class="legend-item"><div class="legend-dot" style="background:var(--c-${cat})"></div>${label}</div>`).join('');
 
   const weekEnd = addDays(monday,6);
@@ -830,6 +843,83 @@ function renderSemana(){
   </div>
   `;
 }
+
+/* ===================== RENDER: MES ===================== */
+function addMonths(date, n){ return new Date(date.getFullYear(), date.getMonth()+n, 1); }
+
+function goToDayFromMonth(dateStr){
+  const target = fechaDeInput(dateStr);
+  const diffDays = Math.round((stripTime(target) - stripTime(new Date())) / 86400000);
+  state.dayOffset = diffDays;
+  state.tab = 'hoy';
+  save(); render();
+}
+
+function renderMes(){
+  const base = addMonths(new Date(), state.monthOffset);
+  const year = base.getFullYear(), month = base.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month+1, 0);
+  const gridStart = mondayOf(firstOfMonth);
+  const gridEnd = addDays(mondayOf(lastOfMonth), 6);
+
+  const weeks = [];
+  let cursor = gridStart;
+  while(cursor <= gridEnd){
+    const week = [];
+    for(let i=0;i<7;i++){ week.push(addDays(cursor,i)); }
+    weeks.push(week);
+    cursor = addDays(cursor,7);
+  }
+
+  const monthLabel = base.toLocaleDateString('es-AR',{month:'long', year:'numeric'});
+
+  const cellsHtml = weeks.map(week => `
+    <div class="month-week">
+      ${week.map(d=>{
+        const inMonth = d.getMonth()===month;
+        const isToday = sameDay(d, new Date());
+        const owner = overnightOwner(d);
+        const holiday = isHoliday(d);
+        const items = inMonth ? dayItems(d) : [];
+        const hasConflict = items.some(i=>i.conflict);
+        const hasEntrega = state.pedidos.some(p=> p.entrega && sameDay(fechaDeInput(p.entrega), d));
+        const tint = !inMonth ? 'var(--surface)' : (owner==='vos' ? 'var(--ok-bg)' : 'var(--surface-alt)');
+        return `<button class="month-cell" onclick="goToDayFromMonth('${inputDeFecha(d)}')" style="background:${tint};opacity:${inMonth?1:0.4}">
+          <div class="month-cell-num ${isToday?'today':''}">${d.getDate()}</div>
+          <div class="month-cell-dots">
+            ${holiday?'<span class="month-dot" style="background:var(--accent)"></span>':''}
+            ${hasEntrega?'<span class="month-dot" style="background:var(--c-domicilio)"></span>':''}
+            ${hasConflict?'<span class="month-dot" style="background:var(--danger)"></span>':''}
+          </div>
+        </button>`;
+      }).join('')}
+    </div>
+  `).join('');
+
+  const legend = [
+    ['vos','var(--ok-bg)','Con vos'], ['martina','var(--surface-alt)','Con Martina']
+  ].map(([k,c,l])=>`<div class="legend-item"><div class="legend-dot" style="background:${c};border:1px solid var(--border)"></div>${l}</div>`).join('')
+  + `<div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Feriado</div>`
+  + `<div class="legend-item"><div class="legend-dot" style="background:var(--c-domicilio)"></div>Entrega de pedido</div>`
+  + `<div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Cruce de horarios</div>`;
+
+  return `
+  <div class="screen">
+    <div class="day-nav">
+      <button class="round-btn" onclick="navMonth(-1)">‹</button>
+      <div class="day-title">
+        <div class="date" style="text-transform:capitalize">${esc(monthLabel)}</div>
+      </div>
+      <button class="round-btn" onclick="navMonth(1)">›</button>
+    </div>
+    <div class="month-dow-row">${DIAS_ABBR.map(a=>`<div class="month-dow">${a.slice(0,2)}</div>`).join('')}</div>
+    <div class="month-grid">${cellsHtml}</div>
+    <div class="legend" style="margin-top:14px">${legend}</div>
+  </div>
+  `;
+}
+function navMonth(n){ state.monthOffset += n; render(); }
 
 /* ===================== RENDER: PEDIDOS ===================== */
 function estadoPedido(p){
@@ -1195,7 +1285,7 @@ function renderSheet(){
         <div class="field"><label>Hora inicio</label><input type="time" value="${d.start}" onchange="sheetDateTimeChanged('start',this.value)"></div>
         <div class="field"><label>Hora fin</label><input type="time" value="${d.end}" onchange="sheetDateTimeChanged('end',this.value)"></div>
       </div>
-      <div id="overlapNoteBox">${conflict ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : ''}</div>
+      <div id="overlapNoteBox">${conflict ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con tu trabajo o con el tiempo con Julia en alguno de los días elegidos.</div>` : ''}</div>
       <button id="sheetSaveBtn" class="btn btn-primary btn-block" ${(!d.name||!d.days.length)?'disabled':''} onclick="saveActividad()">Guardar actividad</button>
     `;
     return wrapSheet(title, body, true);
@@ -1392,7 +1482,7 @@ function refreshSheetDynamic(){
   } else if(type==='actividadForm'){
     const conflict = (d.days && d.days.length) ? checkOverlapActividad(d.days, d.start, d.end) : false;
     const html = conflict
-      ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : '';
+      ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con tu trabajo o con el tiempo con Julia en alguno de los días elegidos.</div>` : '';
     if(noteBox && noteBox.innerHTML !== html) noteBox.innerHTML = html;
     if(btn){
       const shouldDisable = !(d.name && d.days && d.days.length);
@@ -1467,7 +1557,7 @@ function delCheck(pid,i){ const p=state.pedidos.find(x=>x.id===pid); p.checklist
 
 /* ===================== TAB BAR ===================== */
 function renderTabbar(){
-  const tabs = [['hoy','Hoy',ICONS.hoy], ['semana','Semana',ICONS.semana], ['pedidos','Pedidos',ICONS.pedidos], ['ajustes','Ajustes',ICONS.ajustes]];
+  const tabs = [['hoy','Hoy',ICONS.hoy], ['semana','Semana',ICONS.semana], ['mes','Mes',ICONS.mes], ['pedidos','Pedidos',ICONS.pedidos], ['ajustes','Ajustes',ICONS.ajustes]];
   return `<div class="tabbar">
     ${tabs.map(([key,label,icon])=>`
       <button class="tab-btn ${state.tab===key?'active':''}" onclick="setTab('${key}')">
@@ -1484,6 +1574,7 @@ function render(){
   let screenHtml = '';
   if(state.tab==='hoy') screenHtml = renderHoy();
   else if(state.tab==='semana') screenHtml = renderSemana();
+  else if(state.tab==='mes') screenHtml = renderMes();
   else if(state.tab==='pedidos') screenHtml = renderPedidos();
   else screenHtml = renderAjustes();
 
