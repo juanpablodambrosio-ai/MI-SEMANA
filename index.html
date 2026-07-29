@@ -229,6 +229,7 @@ function defaultState(){
     homeLayout: 'timeline',
     semanaBase: 'vos',
     palette: 'calida',
+    names: { user: 'Juan Pablo', martina: 'Martina', abuela: 'Mercedes' },
     custodyPattern: {
       vos:     {0:'vos', 1:'martina', 2:'vos', 3:'martina', 4:'vos', 5:'vos', 6:'vos'},
       martina: {0:'martina', 1:'vos', 2:'martina', 3:'vos', 4:'martina', 5:'martina', 6:'martina'}
@@ -323,6 +324,12 @@ function overnightOwner(date){
   return state.custodyPattern[applied][idx];
 }
 
+function nombre(who){ // who: 'vos' | 'user' | 'martina' | 'abuela'
+  const key = (who==='vos') ? 'user' : who;
+  return (state.names && state.names[key]) || (key==='user' ? 'vos' : key==='martina' ? 'Martina' : 'Mercedes');
+}
+function con(who){ return 'Con ' + nombre(who); }
+
 // Genera los bloques de custodia (dónde está Julia) para un día completo
 function custodySegments(date){
   const idx = weekdayIdx(date); // 0=Lun ... 6=Dom
@@ -332,25 +339,25 @@ function custodySegments(date){
     const prev = addDays(date, -1);
     const morningOwner = overnightOwner(prev);   // noche que terminó esta mañana
     const eveningOwner = overnightOwner(date);    // noche que empieza esta noche
-    segs.push({start:'00:00', end: state.martinaStart, cat: morningOwner, label: (morningOwner==='vos'?'Con vos':'Con Martina') + ' (durmiendo)'});
-    segs.push({start: state.martinaStart, end: state.jardinStart, cat:'martina', label:'Con Martina'});
-    segs.push({start: state.jardinStart, end: state.jardinEnd, cat:'jardin', label:'Jardín / con la abuela'});
-    segs.push({start: state.jardinEnd, end: state.tardeEnd, cat:'vos', label:'Con vos'});
-    segs.push({start: state.tardeEnd, end:'24:00', cat: eveningOwner, label: eveningOwner==='vos'?'Con vos':'Con Martina'});
+    segs.push({start:'00:00', end: state.martinaStart, cat: morningOwner, label: con(morningOwner) + ' (durmiendo)'});
+    segs.push({start: state.martinaStart, end: state.jardinStart, cat:'martina', label: con('martina')});
+    segs.push({start: state.jardinStart, end: state.jardinEnd, cat:'jardin', label: nombre('abuela')});
+    segs.push({start: state.jardinEnd, end: state.tardeEnd, cat:'vos', label: con('vos')});
+    segs.push({start: state.tardeEnd, end:'24:00', cat: eveningOwner, label: con(eveningOwner)});
   } else if(idx === 5){ // Sábado
     const weekendOwner = applied; // patrón A ('vos') = finde con el usuario
     const prev = addDays(date, -1);
     const morningOwner = overnightOwner(prev);
     if(weekendOwner === 'vos'){
-      segs.push({start:'00:00', end:'08:00', cat: morningOwner, label:(morningOwner==='vos'?'Con vos':'Con Martina')+' (durmiendo)'});
+      segs.push({start:'00:00', end:'08:00', cat: morningOwner, label: con(morningOwner)+' (durmiendo)'});
       segs.push({start:'08:00', end:'12:00', cat:'tercero', label:'Cuidado de un tercero de confianza'});
-      segs.push({start:'12:00', end:'24:00', cat:'vos', label:'Con vos'});
+      segs.push({start:'12:00', end:'24:00', cat:'vos', label: con('vos')});
     } else {
-      segs.push({start:'00:00', end:'24:00', cat:'martina', label:'Con Martina'});
+      segs.push({start:'00:00', end:'24:00', cat:'martina', label: con('martina')});
     }
   } else { // Domingo
     const weekendOwner = applied;
-    segs.push({start:'00:00', end:'24:00', cat: weekendOwner, label: weekendOwner==='vos'?'Con vos':'Con Martina'});
+    segs.push({start:'00:00', end:'24:00', cat: weekendOwner, label: con(weekendOwner)});
   }
   return segs;
 }
@@ -470,7 +477,7 @@ function renderHoy(){
   let banners = '';
   banners += `<div class="banner ${bannerCat==='vos'?'vos':'martina'}">
     <div class="banner-eyebrow">Julia Margarita</div>
-    <div class="banner-title">Esta noche duerme ${bannerCat==='vos'?'con vos':'con Martina'}</div>
+    <div class="banner-title">Esta noche duerme ${bannerCat==='vos'?'con vos':('con '+nombre('martina'))}</div>
   </div>`;
 
   if(idx===5 && appliedPattern(date)==='vos'){
@@ -565,7 +572,7 @@ function renderSemana(){
   }).join('');
 
   const legend = [
-    ['vos','Con vos'],['martina','Con Martina'],['jardin','Jardín / abuela'],['trabajo','Turno fijo'],['domicilio','Visita a domicilio'],['actividad','Actividad fija']
+    ['vos',con('vos')],['martina',con('martina')],['jardin','Con '+nombre('abuela')],['trabajo','Turno fijo'],['domicilio','Visita a domicilio'],['actividad','Actividad fija']
   ].map(([cat,label])=>`<div class="legend-item"><div class="legend-dot" style="background:var(--c-${cat})"></div>${label}</div>`).join('');
 
   const weekEnd = addDays(monday,6);
@@ -672,7 +679,7 @@ function renderAjustes(){
       const showMonth = d.getDate()===1;
       return `<div class="custody-cell">
         <div class="custody-cell-date">${DIAS_ABBR[idx]}${showMonth?' '+MESES[d.getMonth()].slice(0,3):''} ${d.getDate()}</div>
-        <button class="custody-cell-btn ${val}" onclick="toggleCustodyCell('${w.key}',${idx})">${val==='vos'?'YO':'M'}</button>
+        <button class="custody-cell-btn ${val}" onclick="toggleCustodyCell('${w.key}',${idx})">${val==='vos'?'YO':nombre('martina').charAt(0).toUpperCase()}</button>
       </div>`;
     }).join('');
     return `<div class="custody-week-label">${w.label}</div><div class="custody-grid">${cells}</div>`;
@@ -705,7 +712,7 @@ function renderAjustes(){
     <div class="toggle-row" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
       <div>
         <div class="toggle-row-label">Esta semana el fin de semana es de:</div>
-        <div class="toggle-row-sub">${state.semanaBase==='vos'?'Vos':'Martina'}</div>
+        <div class="toggle-row-sub">${state.semanaBase==='vos'?'Vos':nombre('martina')}</div>
       </div>
       <button class="switch ${state.semanaBase==='martina'?'on':''}" onclick="toggleSemanaBase()"></button>
     </div>
@@ -713,18 +720,35 @@ function renderAjustes(){
     <div class="section-title">Pernocte por día (ciclo de 14 días)</div>
     ${custodyRows}
 
-    <div class="section-title">Horarios fijos</div>
+    <div class="section-title">Nombres</div>
     <div class="field-row">
-      <div class="field"><label>Turno — inicio</label><input type="time" value="${state.workStart}" onchange="updateHorario('workStart',this.value)"></div>
-      <div class="field"><label>Turno — fin</label><input type="time" value="${state.workEnd}" onchange="updateHorario('workEnd',this.value)"></div>
+      <div class="field"><label>Vos</label><input type="text" value="${esc(state.names.user)}" onchange="updateNombre('user',this.value)"></div>
+      <div class="field"><label>Mamá de Julia</label><input type="text" value="${esc(state.names.martina)}" onchange="updateNombre('martina',this.value)"></div>
     </div>
+    <div class="field"><label>Jardín / cuidado de la tarde</label><input type="text" value="${esc(state.names.abuela)}" onchange="updateNombre('abuela',this.value)"></div>
+
+    <div class="section-title">Tu turno de trabajo</div>
     <div class="field-row">
-      <div class="field"><label>Con Martina desde</label><input type="time" value="${state.martinaStart}" onchange="updateHorario('martinaStart',this.value)"></div>
-      <div class="field"><label>La lleva al jardín</label><input type="time" value="${state.jardinStart}" onchange="updateHorario('jardinStart',this.value)"></div>
+      <div class="field"><label>Inicio</label><input type="time" value="${state.workStart}" onchange="updateHorario('workStart',this.value)"></div>
+      <div class="field"><label>Fin</label><input type="time" value="${state.workEnd}" onchange="updateHorario('workEnd',this.value)"></div>
     </div>
+
+    <div class="section-title">Horarios con ${esc(nombre('martina'))}</div>
     <div class="field-row">
-      <div class="field"><label>Jardín — fin</label><input type="time" value="${state.jardinEnd}" onchange="updateHorario('jardinEnd',this.value)"></div>
-      <div class="field"><label>Corte de tu cuidado (tarde)</label><input type="time" value="${state.tardeEnd}" onchange="updateHorario('tardeEnd',this.value)"></div>
+      <div class="field"><label>Desde</label><input type="time" value="${state.martinaStart}" onchange="updateHorario('martinaStart',this.value)"></div>
+      <div class="field"><label>Hasta (la lleva al jardín)</label><input type="time" value="${state.jardinStart}" onchange="updateHorario('jardinStart',this.value)"></div>
+    </div>
+
+    <div class="section-title">Horarios con ${esc(nombre('abuela'))}</div>
+    <div class="field-row">
+      <div class="field"><label>Desde</label><input type="time" value="${state.jardinStart}" onchange="updateHorario('jardinStart',this.value)"></div>
+      <div class="field"><label>Hasta</label><input type="time" value="${state.jardinEnd}" onchange="updateHorario('jardinEnd',this.value)"></div>
+    </div>
+
+    <div class="section-title">Horarios con ${esc(nombre('user'))}</div>
+    <div class="field-row">
+      <div class="field"><label>Desde</label><input type="time" value="${state.jardinEnd}" onchange="updateHorario('jardinEnd',this.value)"></div>
+      <div class="field"><label>Hasta (corte, de ahí depende el pernocte)</label><input type="time" value="${state.tardeEnd}" onchange="updateHorario('tardeEnd',this.value)"></div>
     </div>
 
     <div class="section-title">Actividades fijas semanales</div>
@@ -754,6 +778,7 @@ function toggleCustodyCell(patternKey, idx){
 function toggleSemanaBase(){ state.semanaBase = state.semanaBase==='vos'?'martina':'vos'; save(); render(); }
 function toggleOverlapMode(){ state.overlapMode = state.overlapMode==='avisar'?'bloquear':'avisar'; save(); render(); }
 function updateHorario(key,val){ state[key]=val; save(); render(); }
+function updateNombre(key,val){ state.names[key] = val.trim() || state.names[key]; save(); render(); }
 function setPalette(p){ state.palette=p; save(); render(); }
 function removeActivity(id){ state.fixedActivities = state.fixedActivities.filter(a=>a.id!==id); save(); render(); }
 
@@ -788,18 +813,18 @@ function renderSheet(){
     title = 'Actividad fija';
     const conflict = d.days.length ? checkOverlapActividad(d.days, d.start, d.end) : false;
     body = `
-      <div class="field"><label>Nombre</label><input type="text" id="f-name" value="${esc(d.name)}" placeholder="Ej: Gimnasio" oninput="draftUpdate('name',this.value)"></div>
+      <div class="field"><label>Nombre</label><input type="text" id="f-name" value="${esc(d.name)}" placeholder="Ej: Gimnasio" oninput="draftUpdateSilent('name',this.value)"></div>
       <div class="field"><label>Días</label>
         <div class="days-toggle">
           ${DIAS_ABBR.map((ab,i)=>`<button type="button" class="day-chip ${d.days.includes(i)?'active':''}" onclick="toggleDraftDay(${i})">${ab.slice(0,2)}</button>`).join('')}
         </div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Hora inicio</label><input type="time" value="${d.start}" onchange="draftUpdate('start',this.value)"></div>
-        <div class="field"><label>Hora fin</label><input type="time" value="${d.end}" onchange="draftUpdate('end',this.value)"></div>
+        <div class="field"><label>Hora inicio</label><input type="time" value="${d.start}" onchange="sheetDateTimeChanged('start',this.value)"></div>
+        <div class="field"><label>Hora fin</label><input type="time" value="${d.end}" onchange="sheetDateTimeChanged('end',this.value)"></div>
       </div>
-      ${conflict ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : ''}
-      <button class="btn btn-primary btn-block" ${(!d.name||!d.days.length)?'disabled':''} onclick="saveActividad()">Guardar actividad</button>
+      <div id="overlapNoteBox">${conflict ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : ''}</div>
+      <button id="sheetSaveBtn" class="btn btn-primary btn-block" ${(!d.name||!d.days.length)?'disabled':''} onclick="saveActividad()">Guardar actividad</button>
     `;
     return wrapSheet(title, body, true);
   }
@@ -812,17 +837,17 @@ function renderSheet(){
     const conflict = checkOverlapVisita(d.fecha, d.inicio, d.fin, existing?existing.id:null);
     const bloqueado = conflict && state.overlapMode==='bloquear';
     body = `
-      <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdate('cliente',this.value)"></div>
-      <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdate('direccion',this.value)"></div>
-      <div class="field"><label>Fecha</label><input type="date" value="${d.fecha}" onchange="draftUpdate('fecha',this.value)"></div>
+      <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdateSilent('cliente',this.value)"></div>
+      <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdateSilent('direccion',this.value)"></div>
+      <div class="field"><label>Fecha</label><input type="date" value="${d.fecha}" onchange="sheetDateTimeChanged('fecha',this.value)"></div>
       <div class="field-row">
-        <div class="field"><label>Hora inicio</label><input type="time" value="${d.inicio}" onchange="draftUpdate('inicio',this.value)"></div>
-        <div class="field"><label>Hora fin</label><input type="time" value="${d.fin}" onchange="draftUpdate('fin',this.value)"></div>
+        <div class="field"><label>Hora inicio</label><input type="time" value="${d.inicio}" onchange="sheetDateTimeChanged('inicio',this.value)"></div>
+        <div class="field"><label>Hora fin</label><input type="time" value="${d.fin}" onchange="sheetDateTimeChanged('fin',this.value)"></div>
       </div>
-      ${conflict ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : ''}
+      <div id="overlapNoteBox">${conflict ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : ''}</div>
       <div style="display:flex;gap:8px">
         ${existing?`<button class="btn btn-danger" onclick="deleteVisita('${existing.id}')">Eliminar</button>`:''}
-        <button class="btn btn-primary" style="flex:1" ${(!d.cliente||!d.fecha||bloqueado)?'disabled':''} onclick="saveVisita('${existing?existing.id:''}')">${bloqueado?'No se puede guardar (cruce)':'Guardar visita'}</button>
+        <button id="sheetSaveBtn" class="btn btn-primary" style="flex:1" ${(!d.cliente||!d.fecha||bloqueado)?'disabled':''} onclick="saveVisita('${existing?existing.id:''}')">${bloqueado?'No se puede guardar (cruce)':'Guardar visita'}</button>
       </div>
     `;
     return wrapSheet(title, body, true);
@@ -833,20 +858,20 @@ function renderSheet(){
     sheetState.data.draft = d;
     title = 'Nuevo pedido';
     body = `
-      <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdate('cliente',this.value)"></div>
-      <div class="field"><label>Contacto</label><input type="text" value="${esc(d.contacto)}" oninput="draftUpdate('contacto',this.value)"></div>
-      <div class="field"><label>Descripción</label><textarea oninput="draftUpdate('descripcion',this.value)">${esc(d.descripcion)}</textarea></div>
-      <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdate('direccion',this.value)"></div>
+      <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdateSilent('cliente',this.value)"></div>
+      <div class="field"><label>Contacto</label><input type="text" value="${esc(d.contacto)}" oninput="draftUpdateSilent('contacto',this.value)"></div>
+      <div class="field"><label>Descripción</label><textarea oninput="draftUpdateSilent('descripcion',this.value)">${esc(d.descripcion)}</textarea></div>
+      <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdateSilent('direccion',this.value)"></div>
       <div class="field-row">
-        <div class="field"><label>Fecha inicio</label><input type="date" value="${d.inicio}" onchange="draftUpdate('inicio',this.value)"></div>
-        <div class="field"><label>Fecha entrega</label><input type="date" value="${d.entrega}" onchange="draftUpdate('entrega',this.value)"></div>
+        <div class="field"><label>Fecha inicio</label><input type="date" value="${d.inicio}" onchange="sheetDateTimeChanged('inicio',this.value)"></div>
+        <div class="field"><label>Fecha entrega</label><input type="date" value="${d.entrega}" onchange="sheetDateTimeChanged('entrega',this.value)"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Precio</label><input type="number" value="${d.precio}" oninput="draftUpdate('precio',this.value)"></div>
-        <div class="field"><label>Seña</label><input type="number" value="${d.sena}" oninput="draftUpdate('sena',this.value)"></div>
+        <div class="field"><label>Precio</label><input type="number" value="${d.precio}" oninput="draftUpdateSilent('precio',this.value)"></div>
+        <div class="field"><label>Seña</label><input type="number" value="${d.sena}" oninput="draftUpdateSilent('sena',this.value)"></div>
       </div>
-      <div class="field"><label>Materiales</label><textarea oninput="draftUpdate('materiales',this.value)">${esc(d.materiales)}</textarea></div>
-      <button class="btn btn-primary btn-block" ${!d.cliente?'disabled':''} onclick="savePedido()">Guardar pedido</button>
+      <div class="field"><label>Materiales</label><textarea oninput="draftUpdateSilent('materiales',this.value)">${esc(d.materiales)}</textarea></div>
+      <button id="sheetSaveBtn" class="btn btn-primary btn-block" ${!d.cliente?'disabled':''} onclick="savePedido()">Guardar pedido</button>
     `;
     return wrapSheet(title, body, true);
   }
@@ -907,7 +932,31 @@ function wrapSheet(title, body, closable){
   </div>`;
 }
 
-function draftUpdate(key,val){ sheetState.data.draft[key] = val; render(); }
+function draftUpdate(key,val){ sheetState.data.draft[key] = val; render(); } // solo para toggles que no son inputs nativos (días, etc.)
+function draftUpdateSilent(key,val){ sheetState.data.draft[key] = val; refreshSheetDynamic(); } // texto: nunca redibuja
+function sheetDateTimeChanged(key,val){ sheetState.data.draft[key] = val; refreshSheetDynamic(); } // fecha/hora: nunca redibuja (evita cerrar el selector nativo)
+
+function refreshSheetDynamic(){
+  if(!sheetState) return;
+  const {type, data} = sheetState;
+  const d = data.draft;
+  const noteBox = document.getElementById('overlapNoteBox');
+  const btn = document.getElementById('sheetSaveBtn');
+  if(type==='visita'){
+    const conflict = checkOverlapVisita(d.fecha, d.inicio, d.fin, data.id || null);
+    const bloqueado = conflict && state.overlapMode==='bloquear';
+    if(noteBox) noteBox.innerHTML = conflict
+      ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : '';
+    if(btn){ btn.disabled = !(d.cliente && d.fecha) || bloqueado; btn.textContent = bloqueado ? 'No se puede guardar (cruce)' : 'Guardar visita'; }
+  } else if(type==='actividadForm'){
+    const conflict = (d.days && d.days.length) ? checkOverlapActividad(d.days, d.start, d.end) : false;
+    if(noteBox) noteBox.innerHTML = conflict
+      ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : '';
+    if(btn) btn.disabled = !(d.name && d.days && d.days.length);
+  } else if(type==='pedidoForm'){
+    if(btn) btn.disabled = !d.cliente;
+  }
+}
 function toggleDraftDay(i){
   const days = sheetState.data.draft.days;
   const p = days.indexOf(i);
