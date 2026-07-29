@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#7A5A3A">
+<meta name="theme-color" content="#1D4ED8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Mi Semana">
@@ -15,17 +15,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#F7F7F6; --surface:#FFFFFF; --surface-alt:#EFEFED;
-  --border:#E2E2DF; --border-strong:#CACAC5;
-  --text:#24272A; --text-2:#565B5E; --text-3:#75797C;
-  --accent:#7A5A3A; --accent-hover:#5F4429; --accent-soft:#F3EADD;
-  --ok:#3B6D11; --ok-bg:#EAF3DE;
-  --warn:#8A5410; --warn-bg:#FBF0DD;
-  --danger:#A8362D; --danger-bg:#FCECEA;
-  --c-vos:#3B6D11; --c-martina:#8B98A0; --c-jardin:#8A5410; --c-trabajo:#4B4D4F; --c-domicilio:#7A5A3A; --c-actividad:#B9A088; --c-tercero:#75797C;
+  --bg:#F6F8FB; --surface:#FFFFFF; --surface-alt:#EEF2F7;
+  --border:#DCE3EC; --border-strong:#AFBBCB;
+  --text:#0B1220; --text-2:#48566B; --text-3:#7C8AA0;
+  --accent:#1D4ED8; --accent-hover:#1739A6; --accent-soft:#DCE7FB;
+  --ok:#1D4ED8; --ok-bg:#DCE7FB;
+  --warn:#334155; --warn-bg:#E4E9F0;
+  --danger:#B3261E; --danger-bg:#FBE7E6;
+  --c-vos:#1D4ED8; --c-martina:#94A3B8; --c-jardin:#38BDF8; --c-trabajo:#0B1220; --c-domicilio:#0E7490; --c-actividad:#B7C3D6; --c-tercero:#475569;
 }
-[data-palette="fria"]{ --c-vos:#3D6B6B; --c-martina:#8B98A0; --c-jardin:#8A5410; --c-trabajo:#2C2A28; --c-domicilio:#7A5A3A; --c-actividad:#AFC5C5; }
-[data-palette="minimal"]{ --c-vos:#3B6D11; --c-martina:#ACAFB1; --c-jardin:#8C8F91; --c-trabajo:#4B4D4F; --c-domicilio:#7A5A3A; --c-actividad:#BDD1A4; }
+[data-palette="fria"]{ --c-vos:#2563EB; --c-martina:#A9B6C6; --c-jardin:#60A5FA; --c-trabajo:#111827; --c-domicilio:#0891B2; --c-actividad:#C7D2E0; --c-tercero:#64748B; }
+[data-palette="minimal"]{ --c-vos:#0F172A; --c-martina:#CBD3DC; --c-jardin:#94A3B8; --c-trabajo:#334155; --c-domicilio:#1D4ED8; --c-actividad:#E2E8F0; --c-tercero:#94A3B8; }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 body{margin:0;background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;}
 ::-webkit-scrollbar{width:0;height:0}
@@ -89,6 +89,13 @@ main{flex:1;overflow-y:auto;padding-bottom:96px;position:relative;}
 
 /* week view */
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:18px;}
+
+/* week view (bloques por día) */
+.week-day-block{margin-bottom:22px;}
+.week-day-block-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:1.5px solid var(--border-strong);}
+.week-day-block-name{font-family:'Fraunces',serif;font-weight:600;font-size:15.5px;}
+.week-day-block-date{font-size:11.5px;color:var(--text-3);margin-left:6px;}
+.week-day-block-holiday{font-size:10.5px;font-weight:700;color:var(--danger);background:var(--danger-bg);padding:2px 8px;border-radius:20px;}
 
 /* month view */
 .month-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
@@ -434,6 +441,20 @@ function holidayOn(date){
 function isHoliday(date){ return !!holidayOn(date); }
 function isWorkingDay(date){ return weekdayIdx(date)<=4 && !isHoliday(date); }
 
+function pedidoHolidayWarningsHtml(d){
+  const msgs = [];
+  if(d.inicio){
+    const label = holidayOn(fechaDeInput(d.inicio));
+    if(label) msgs.push(`El inicio (${fmtFechaCorta(fechaDeInput(d.inicio))}) cae en feriado: ${esc(label)}.`);
+  }
+  if(d.entrega){
+    const label = holidayOn(fechaDeInput(d.entrega));
+    if(label) msgs.push(`La entrega (${fmtFechaCorta(fechaDeInput(d.entrega))}) cae en feriado: ${esc(label)}.`);
+  }
+  if(!msgs.length) return '';
+  return `<div class="overlap-note danger">${ICONS.warn} Ojo: ${msgs.join(' ')}</div>`;
+}
+
 // Suma N días hábiles (lun-vie, sin feriados) a partir de una fecha de inicio (inclusive)
 function addBusinessDays(startDate, n){
   if(!n || n<1) return null;
@@ -695,8 +716,8 @@ function renderHoy(){
   let banners = '';
   const holidayLabel = holidayOn(date);
   if(holidayLabel){
-    banners += `<div class="banner" style="background:var(--accent-soft)">
-      <div class="banner-eyebrow" style="color:var(--accent)">Feriado</div>
+    banners += `<div class="banner" style="background:var(--danger-bg)">
+      <div class="banner-eyebrow" style="color:var(--danger)">Feriado</div>
       <div class="banner-title">${esc(holidayLabel)} — no hay trabajo hoy</div>
     </div>`;
   }
@@ -793,28 +814,42 @@ function setLayout(l){ state.homeLayout = l; render(); }
 function renderSemana(){
   const monday = mondayOf(currentDay());
   const days = [0,1,2,3,4,5,6].map(n=>addDays(monday,n));
+  const weekEnd = addDays(monday,6);
 
-  const cols = days.map(d=>{
-    const items = custodySegments(d);
-    const total = 24*60;
-    const bars = items.map(s=>{
-      const s1=toMin(s.start), s2 = s.end==='24:00'?1440:toMin(s.end);
-      const h = (s2-s1)/total*64;
-      return `<div style="height:${h}px;background:var(--c-${s.cat})"></div>`;
-    }).join('');
+  const dayBlocks = days.map(d=>{
     const isToday = sameDay(d, new Date());
-    return `<div class="week-day">
-      <div class="week-day-abbr">${DIAS_ABBR[weekdayIdx(d)]}</div>
-      <div class="week-day-num ${isToday?'today':''}">${d.getDate()}</div>
-      <div class="week-bar">${bars}</div>
+    const items = dayItems(d);
+    const holidayLabel = holidayOn(d);
+    const cards = items.length ? items.map(i=>`
+      <div class="tl-item ${i.conflict?'conflict':''}" ${i.oneOff?`onclick="openSheet('actividadUnica',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
+        <div class="tl-bar" style="background:var(--c-${i.cat})"></div>
+        <div style="flex:1">
+          <div class="tl-time">${fmtRango(i.start,i.end)}</div>
+          <div class="tl-label">${esc(i.label)}</div>
+        </div>
+        ${i.conflict?`<div class="tl-conflict-icon">⚠</div>`:''}
+      </div>
+    `).join('') : `<div class="empty-state" style="padding:14px 0">Sin eventos.</div>`;
+
+    return `
+    <div class="week-day-block">
+      <div class="week-day-block-head">
+        <div>
+          <span class="week-day-block-name">${DIAS_LARGOS[weekdayIdx(d)].charAt(0).toUpperCase()+DIAS_LARGOS[weekdayIdx(d)].slice(1)}</span>
+          <span class="week-day-block-date">${fmtFechaCorta(d)}</span>
+          ${isToday?'<span class="today-tag" style="margin-left:6px">HOY</span>':''}
+        </div>
+        ${holidayLabel?`<span class="week-day-block-holiday">Feriado</span>`:''}
+      </div>
+      ${cards}
+      <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="openSheet('actividadUnica',{draft:{name:'',fecha:'${inputDeFecha(d)}',inicio:'18:00',fin:'19:00'}})">+ Nuevo bloque</button>
     </div>`;
   }).join('');
 
   const legend = [
-    ['vos',con('vos')],['martina',con('martina')],['jardin','Con '+nombre('abuela')],['trabajo','Trabajo '+nombre('user')],['domicilio','Visita a domicilio'],['actividad','Actividad fija']
+    ['vos',con('vos')],['martina',con('martina')],['jardin','Con '+nombre('abuela')],['trabajo','Trabajo '+nombre('user')],['domicilio','Visita a domicilio'],['actividad','Actividad']
   ].map(([cat,label])=>`<div class="legend-item"><div class="legend-dot" style="background:var(--c-${cat})"></div>${label}</div>`).join('');
 
-  const weekEnd = addDays(monday,6);
   const pedidosSemana = state.pedidos.filter(p=>{
     if(!p.entrega) return false;
     const f = fechaDeInput(p.entrega);
@@ -835,9 +870,15 @@ function renderSemana(){
 
   return `
   <div class="screen">
-    <div class="section-title" style="margin-top:0">Semana del ${fmtFechaCorta(monday)} al ${fmtFechaCorta(weekEnd)}</div>
-    <div class="week-grid">${cols}</div>
-    <div class="legend">${legend}</div>
+    <div class="day-nav">
+      <button class="round-btn" onclick="navDay(-7)">‹</button>
+      <div class="day-title">
+        <div class="date">${fmtFechaCorta(monday)} – ${fmtFechaCorta(weekEnd)}</div>
+      </div>
+      <button class="round-btn" onclick="navDay(7)">›</button>
+    </div>
+    <div class="legend" style="margin-bottom:16px">${legend}</div>
+    ${dayBlocks}
     <div class="section-title">Entregas de la semana</div>
     ${listaPedidos}
   </div>
@@ -888,7 +929,7 @@ function renderMes(){
         return `<button class="month-cell" onclick="goToDayFromMonth('${inputDeFecha(d)}')" style="background:${tint};opacity:${inMonth?1:0.4}">
           <div class="month-cell-num ${isToday?'today':''}">${d.getDate()}</div>
           <div class="month-cell-dots">
-            ${holiday?'<span class="month-dot" style="background:var(--accent)"></span>':''}
+            ${holiday?'<span class="month-dot" style="background:var(--danger)"></span>':''}
             ${hasEntrega?'<span class="month-dot" style="background:var(--c-domicilio)"></span>':''}
             ${hasConflict?'<span class="month-dot" style="background:var(--danger)"></span>':''}
           </div>
@@ -900,7 +941,7 @@ function renderMes(){
   const legend = [
     ['vos','var(--ok-bg)','Con vos'], ['martina','var(--surface-alt)','Con Martina']
   ].map(([k,c,l])=>`<div class="legend-item"><div class="legend-dot" style="background:${c};border:1px solid var(--border)"></div>${l}</div>`).join('')
-  + `<div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Feriado</div>`
+  + `<div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Feriado</div>`
   + `<div class="legend-item"><div class="legend-dot" style="background:var(--c-domicilio)"></div>Entrega de pedido</div>`
   + `<div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Cruce de horarios</div>`;
 
@@ -1042,9 +1083,9 @@ function renderAjustes(){
   `).join('') : `<div class="empty-state" style="padding:12px 0">Sin puentes turísticos cargados.</div>`;
 
   const palettes = [
-    {key:'calida', label:'Cálida', colors:['#3B6D11','#8B98A0','#8A5410','#4B4D4F','#7A5A3A']},
-    {key:'fria', label:'Fría', colors:['#3D6B6B','#8B98A0','#8A5410','#2C2A28','#7A5A3A']},
-    {key:'minimal', label:'Minimal', colors:['#3B6D11','#ACAFB1','#8C8F91','#4B4D4F','#7A5A3A']}
+    {key:'calida', label:'Azul', colors:['#1D4ED8','#94A3B8','#38BDF8','#0B1220','#0E7490']},
+    {key:'fria', label:'Azul claro', colors:['#2563EB','#A9B6C6','#60A5FA','#111827','#0891B2']},
+    {key:'minimal', label:'Escala de grises', colors:['#0F172A','#CBD3DC','#94A3B8','#334155','#1D4ED8']}
   ].map(p=>`
     <button class="palette-opt ${state.palette===p.key?'active':''}" onclick="setPalette('${p.key}')" style="text-align:left">
       <div class="palette-swatches">${p.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>
@@ -1321,6 +1362,7 @@ function renderSheet(){
     title = existing ? 'Editar visita' : 'Visita a domicilio';
     const conflict = checkOverlapVisita(d.fecha, d.inicio, d.fin, existing?existing.id:null);
     const bloqueado = conflict && state.overlapMode==='bloquear';
+    const visitaHoliday = d.fecha ? holidayOn(fechaDeInput(d.fecha)) : null;
     body = `
       <div class="field"><label>Cliente</label><input type="text" value="${esc(d.cliente)}" oninput="draftUpdateSilent('cliente',this.value)"></div>
       <div class="field"><label>Dirección</label><input type="text" value="${esc(d.direccion)}" oninput="draftUpdateSilent('direccion',this.value)"></div>
@@ -1329,6 +1371,7 @@ function renderSheet(){
         <div class="field"><label>Hora inicio</label><input type="time" value="${d.inicio}" onchange="sheetDateTimeChanged('inicio',this.value)"></div>
         <div class="field"><label>Hora fin</label><input type="time" value="${d.fin}" onchange="sheetDateTimeChanged('fin',this.value)"></div>
       </div>
+      <div id="holidayNoteBox">${visitaHoliday ? `<div class="overlap-note danger">${ICONS.warn} Ojo: esa fecha es feriado (${esc(visitaHoliday)}).</div>` : ''}</div>
       <div id="overlapNoteBox">${conflict ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : ''}</div>
       <div style="display:flex;gap:8px">
         ${existing?`<button class="btn btn-danger" onclick="deleteVisita('${existing.id}')">Eliminar</button>`:''}
@@ -1354,6 +1397,7 @@ function renderSheet(){
       </div>
       <div class="field"><label>Fecha entrega</label><input type="date" id="entregaInput" value="${d.entrega}" onchange="sheetDateTimeChanged('entrega',this.value)"></div>
       <div id="entregaAutoNote" class="detail-line" style="color:var(--text-3);font-size:11.5px;margin:-6px 0 12px">${d.inicio&&d.duracion?('Calculada: '+fmtFechaCorta(fechaDeInput(d.entrega))+' (salteando fines de semana y feriados)'):'Cargá inicio y duración para calcularla sola, o escribila a mano.'}</div>
+      <div id="pedidoHolidayNoteBox">${pedidoHolidayWarningsHtml(d)}</div>
       <div class="field-row">
         <div class="field"><label>Precio</label><input type="number" value="${d.precio}" oninput="draftUpdateSilent('precio',this.value)"></div>
         <div class="field"><label>Seña</label><input type="number" value="${d.sena}" oninput="draftUpdateSilent('sena',this.value)"></div>
@@ -1473,6 +1517,12 @@ function refreshSheetDynamic(){
     const html = conflict
       ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : '';
     if(noteBox && noteBox.innerHTML !== html) noteBox.innerHTML = html; // solo si cambió, para no mover el layout de gusto
+    const holidayBox = document.getElementById('holidayNoteBox');
+    if(holidayBox){
+      const hLabel = d.fecha ? holidayOn(fechaDeInput(d.fecha)) : null;
+      const hHtml = hLabel ? `<div class="overlap-note danger">${ICONS.warn} Ojo: esa fecha es feriado (${esc(hLabel)}).</div>` : '';
+      if(holidayBox.innerHTML !== hHtml) holidayBox.innerHTML = hHtml;
+    }
     if(btn){
       const shouldDisable = !(d.cliente && d.fecha) || bloqueado;
       const label = bloqueado ? 'No se puede guardar (cruce)' : 'Guardar visita';
@@ -1489,6 +1539,11 @@ function refreshSheetDynamic(){
       if(btn.disabled !== shouldDisable) btn.disabled = shouldDisable;
     }
   } else if(type==='pedidoForm'){
+    const holidayBox = document.getElementById('pedidoHolidayNoteBox');
+    if(holidayBox){
+      const hHtml = pedidoHolidayWarningsHtml(d);
+      if(holidayBox.innerHTML !== hHtml) holidayBox.innerHTML = hHtml;
+    }
     if(btn){
       const shouldDisable = !d.cliente;
       if(btn.disabled !== shouldDisable) btn.disabled = shouldDisable;
