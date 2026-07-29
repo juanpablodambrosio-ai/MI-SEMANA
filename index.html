@@ -542,13 +542,13 @@ function dayItems(date){
 
   (state.oneOffActivities||[]).forEach(a=>{
     if(sameDay(fechaDeInput(a.fecha), date)){
-      items.push({type:'actividad', start:a.inicio, end:a.fin, cat:'actividad', label:a.name, refId:a.id, oneOff:true});
+      items.push({type:'actividad', start:a.inicio, end:a.fin, cat:'actividad', label:a.name, refId:a.id, oneOff:true, refType:'actividadUnica'});
     }
   });
 
   state.domicilioVisits.forEach(v=>{
     if(sameDay(fechaDeInput(v.fecha), date)){
-      items.push({type:'visita', start:v.inicio, end:v.fin, cat:'domicilio', label:'Visita: '+v.cliente, refId:v.id});
+      items.push({type:'visita', start:v.inicio, end:v.fin, cat:'domicilio', label:'Visita: '+v.cliente, refId:v.id, refType:'visita'});
     }
   });
 
@@ -744,7 +744,7 @@ function renderHoy(){
   let content = '';
   if(state.homeLayout === 'timeline'){
     content = items.map(i=>`
-      <div class="tl-item ${i.conflict?'conflict':''}" ${i.oneOff?`onclick="openSheet('actividadUnica',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
+      <div class="tl-item ${i.conflict?'conflict':''}" ${i.refType?`onclick="openSheet('${i.refType}',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
         <div class="tl-bar" style="background:var(--c-${i.cat})"></div>
         <div style="flex:1">
           <div class="tl-time">${fmtRango(i.start,i.end)}</div>
@@ -821,7 +821,7 @@ function renderSemana(){
     const items = dayItems(d);
     const holidayLabel = holidayOn(d);
     const cards = items.length ? items.map(i=>`
-      <div class="tl-item ${i.conflict?'conflict':''}" ${i.oneOff?`onclick="openSheet('actividadUnica',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
+      <div class="tl-item ${i.conflict?'conflict':''}" ${i.refType?`onclick="openSheet('${i.refType}',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
         <div class="tl-bar" style="background:var(--c-${i.cat})"></div>
         <div style="flex:1">
           <div class="tl-time">${fmtRango(i.start,i.end)}</div>
