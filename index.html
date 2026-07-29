@@ -934,7 +934,12 @@ function wrapSheet(title, body, closable){
 
 function draftUpdate(key,val){ sheetState.data.draft[key] = val; render(); } // solo para toggles que no son inputs nativos (días, etc.)
 function draftUpdateSilent(key,val){ sheetState.data.draft[key] = val; refreshSheetDynamic(); } // texto: nunca redibuja
-function sheetDateTimeChanged(key,val){ sheetState.data.draft[key] = val; refreshSheetDynamic(); } // fecha/hora: nunca redibuja (evita cerrar el selector nativo)
+function sheetDateTimeChanged(key,val){
+  sheetState.data.draft[key] = val;
+  // se pospone al próximo frame para no pisar el redibujado propio del selector nativo de fecha/hora
+  // (eso era lo que lo cerraba de golpe al tocar el campo de año)
+  requestAnimationFrame(refreshSheetDynamic);
+}
 
 function refreshSheetDynamic(){
   if(!sheetState) return;
@@ -945,16 +950,29 @@ function refreshSheetDynamic(){
   if(type==='visita'){
     const conflict = checkOverlapVisita(d.fecha, d.inicio, d.fin, data.id || null);
     const bloqueado = conflict && state.overlapMode==='bloquear';
-    if(noteBox) noteBox.innerHTML = conflict
+    const html = conflict
       ? `<div class="overlap-note ${bloqueado?'danger':'warn'}">${ICONS.warn} ${bloqueado?'Se cruza con tiempo de Julia. No se puede guardar en modo Bloquear.':'Se cruza con tiempo de Julia. Se puede guardar igual.'}</div>` : '';
-    if(btn){ btn.disabled = !(d.cliente && d.fecha) || bloqueado; btn.textContent = bloqueado ? 'No se puede guardar (cruce)' : 'Guardar visita'; }
+    if(noteBox && noteBox.innerHTML !== html) noteBox.innerHTML = html; // solo si cambió, para no mover el layout de gusto
+    if(btn){
+      const shouldDisable = !(d.cliente && d.fecha) || bloqueado;
+      const label = bloqueado ? 'No se puede guardar (cruce)' : 'Guardar visita';
+      if(btn.disabled !== shouldDisable) btn.disabled = shouldDisable;
+      if(btn.textContent !== label) btn.textContent = label;
+    }
   } else if(type==='actividadForm'){
     const conflict = (d.days && d.days.length) ? checkOverlapActividad(d.days, d.start, d.end) : false;
-    if(noteBox) noteBox.innerHTML = conflict
+    const html = conflict
       ? `<div class="overlap-note warn">${ICONS.warn} Se superpone con el turno fijo o con el tiempo con Julia en alguno de los días elegidos.</div>` : '';
-    if(btn) btn.disabled = !(d.name && d.days && d.days.length);
+    if(noteBox && noteBox.innerHTML !== html) noteBox.innerHTML = html;
+    if(btn){
+      const shouldDisable = !(d.name && d.days && d.days.length);
+      if(btn.disabled !== shouldDisable) btn.disabled = shouldDisable;
+    }
   } else if(type==='pedidoForm'){
-    if(btn) btn.disabled = !d.cliente;
+    if(btn){
+      const shouldDisable = !d.cliente;
+      if(btn.disabled !== shouldDisable) btn.disabled = shouldDisable;
+    }
   }
 }
 function toggleDraftDay(i){
