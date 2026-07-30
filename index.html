@@ -67,6 +67,23 @@ main{flex:1;overflow-y:auto;padding-bottom:96px;position:relative;}
 
 /* timeline item */
 .tl-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 1px 2px rgba(36,39,42,0.04),0 2px 6px rgba(36,39,42,0.05);}
+
+.julia-group{
+  background-color:#FFFFFF;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cg fill='%23FFFFFF' stroke='%23F0B8CE' stroke-width='0.6'%3E%3Cg transform='translate(18,20)'%3E%3Ccircle cx='5' cy='0' r='3'/%3E%3Ccircle cx='1.5' cy='4.8' r='3'/%3E%3Ccircle cx='-4' cy='3' r='3'/%3E%3Ccircle cx='-4' cy='-3' r='3'/%3E%3Ccircle cx='1.5' cy='-4.8' r='3'/%3E%3C/g%3E%3Cg transform='translate(65,15) scale(0.7)'%3E%3Ccircle cx='5' cy='0' r='3'/%3E%3Ccircle cx='1.5' cy='4.8' r='3'/%3E%3Ccircle cx='-4' cy='3' r='3'/%3E%3Ccircle cx='-4' cy='-3' r='3'/%3E%3Ccircle cx='1.5' cy='-4.8' r='3'/%3E%3C/g%3E%3Cg transform='translate(40,65) scale(0.85)'%3E%3Ccircle cx='5' cy='0' r='3'/%3E%3Ccircle cx='1.5' cy='4.8' r='3'/%3E%3Ccircle cx='-4' cy='3' r='3'/%3E%3Ccircle cx='-4' cy='-3' r='3'/%3E%3Ccircle cx='1.5' cy='-4.8' r='3'/%3E%3C/g%3E%3Cg transform='translate(78,72) scale(0.55)'%3E%3Ccircle cx='5' cy='0' r='3'/%3E%3Ccircle cx='1.5' cy='4.8' r='3'/%3E%3Ccircle cx='-4' cy='3' r='3'/%3E%3Ccircle cx='-4' cy='-3' r='3'/%3E%3Ccircle cx='1.5' cy='-4.8' r='3'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23FBBF24'%3E%3Ccircle cx='18' cy='20' r='2'/%3E%3Ccircle cx='65' cy='15' r='1.4'/%3E%3Ccircle cx='40' cy='65' r='1.7'/%3E%3Ccircle cx='78' cy='72' r='1.1'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:repeat;
+  border:1.5px solid #EFAAC7;border-radius:12px;padding:13px 15px;margin-bottom:14px;
+}
+.julia-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.julia-avatar{width:30px;height:30px;border-radius:50%;background:#D6577D;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:13px;flex-shrink:0;}
+.julia-summary{font-family:'Fraunces',serif;font-weight:600;font-size:13.5px;color:#7A2E4A;line-height:1.35;}
+.julia-row{display:flex;align-items:center;gap:9px;padding:6px 0;border-top:1px solid #F5DCE6;}
+.julia-rows{border-top:1px solid #F5DCE6;padding-top:2px;}
+.julia-rows .julia-row:first-child{border-top:none;}
+.julia-row-icon{width:16px;height:16px;flex-shrink:0;color:#C77690;}
+.julia-row-icon svg{width:100%;height:100%;display:block;}
+.julia-row-time{font-size:11.5px;color:#B08A97;width:104px;flex-shrink:0;}
+.julia-row-label{font-family:'Fraunces',serif;font-size:13px;font-weight:600;color:#3A2E33;}
 .tl-item.conflict{border-color:var(--danger);background:var(--danger-bg);}
 .tl-bar{width:3px;align-self:stretch;border-radius:3px;flex-shrink:0;min-height:34px;}
 .tl-time{font-size:11.5px;color:var(--text-3);margin-bottom:2px;}
@@ -623,6 +640,69 @@ function freeRanges(date){
   return free.filter(([s,e]) => e-s >= 15); // ignora huecos menores a 15 min
 }
 
+// Divide cada hueco libre en tramos "con Julia" / "sin Julia" según la custodia de ese momento
+function freeRangesWithJulia(date){
+  const free = freeRanges(date);
+  const vosRanges = custodySegments(date)
+    .filter(c=>c.cat==='vos')
+    .map(c=>[toMin(c.start), toMin(c.end)]);
+
+  const result = [];
+  free.forEach(([s,e])=>{
+    const points = new Set([s,e]);
+    vosRanges.forEach(([vs,ve])=>{
+      if(vs>s && vs<e) points.add(vs);
+      if(ve>s && ve<e) points.add(ve);
+    });
+    const sorted = Array.from(points).sort((a,b)=>a-b);
+    for(let i=0;i<sorted.length-1;i++){
+      const segS=sorted[i], segE=sorted[i+1];
+      if(segE<=segS) continue;
+      const mid=(segS+segE)/2;
+      const conJulia = vosRanges.some(([vs,ve])=> mid>=vs && mid<ve);
+      const last = result[result.length-1];
+      if(last && last.conJulia===conJulia && last.end===segS) last.end = segE;
+      else result.push({start:segS, end:segE, conJulia});
+    }
+  });
+  return result;
+}
+
+// Une tramos de custodia consecutivos con el mismo dueño (ej: dormir con Martina + a la mañana con Martina = un solo tramo)
+function custodyLabelForCat(cat){
+  if(cat==='jardin') return 'Con '+nombre('abuela');
+  if(cat==='tercero') return 'Cuidado de un tercero de confianza';
+  return con(cat); // 'vos' | 'martina'
+}
+function mergeCustodyItems(items){
+  const merged = [];
+  items.forEach(it=>{
+    const last = merged[merged.length-1];
+    if(last && last.cat===it.cat && last.end===it.start){
+      last.end = it.end;
+      last.label = custodyLabelForCat(last.cat);
+    } else {
+      merged.push(Object.assign({}, it));
+    }
+  });
+  return merged;
+}
+
+function juliaRowIcon(item){
+  if(item.cat==='jardin') return ICONS.sun;
+  if(item.start==='00:00') return ICONS.moon;
+  return ICONS.heart;
+}
+
+function juliaSummarySentence(items){
+  if(!items.length) return '';
+  const lc = (label) => label.replace(/^Con /,'con ');
+  if(items.length===1) return `Hoy Julia está todo el día ${lc(items[0].label)}.`;
+  const head = items.slice(0,-1).map(seg=>`${lc(seg.label)} hasta las ${seg.end}`);
+  const last = items[items.length-1];
+  return `Hoy Julia está ${head.join(', ')}, y después ${lc(last.label)}.`;
+}
+
 // Detección de superposición para el formulario de VISITA A DOMICILIO en una fecha/hora dada
 function checkOverlapVisita(fecha, inicio, fin, ignoreId){
   const date = fechaDeInput(fecha);
@@ -689,7 +769,10 @@ const ICONS = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>`,
   visit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>`,
   order: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7"/></svg>`,
-  warn: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2L12 3.5Z"/><path d="M12 10v4.2M12 17.3h.01"/></svg>`
+  warn: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2L12 3.5Z"/><path d="M12 10v4.2M12 17.3h.01"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z"/></svg>`,
+  sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.3"/><path d="M12 2.5v2.7M12 18.8v2.7M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M2.5 12h2.7M18.8 12h2.7M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.3s-7.3-4.5-9.7-9C.8 7.4 2.6 4 6 4c1.9 0 3.5 1 6 3.5C14.5 5 16.1 4 18 4c3.4 0 5.2 3.4 3.7 7.3-2.4 4.5-9.7 9-9.7 9Z"/></svg>`
 };
 
 /* ===================== SHEET / MODAL genérico ===================== */
@@ -743,7 +826,27 @@ function renderHoy(){
 
   let content = '';
   if(state.homeLayout === 'timeline'){
-    content = items.map(i=>`
+    const custodyItems = mergeCustodyItems(items.filter(i=>i.type==='custodia'));
+    const otherItems = items.filter(i=>i.type!=='custodia');
+
+    const juliaGroup = custodyItems.length ? `
+      <div class="julia-group">
+        <div class="julia-head">
+          <div class="julia-avatar">J</div>
+          <div class="julia-summary">${esc(juliaSummarySentence(custodyItems))}</div>
+        </div>
+        <div class="julia-rows">
+          ${custodyItems.map(i=>`
+            <div class="julia-row">
+              <span class="julia-row-icon">${juliaRowIcon(i)}</span>
+              <span class="julia-row-time">${fmtRango(i.start,i.end)}</span>
+              <span class="julia-row-label">${esc(i.label)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>` : '';
+
+    const otherCards = otherItems.length ? otherItems.map(i=>`
       <div class="tl-item ${i.conflict?'conflict':''}" ${i.refType?`onclick="openSheet('${i.refType}',{id:'${i.refId}'})" style="cursor:pointer"`:''}>
         <div class="tl-bar" style="background:var(--c-${i.cat})"></div>
         <div style="flex:1">
@@ -752,7 +855,9 @@ function renderHoy(){
         </div>
         ${i.conflict?`<div class="tl-conflict-icon">⚠</div>`:''}
       </div>
-    `).join('') || `<div class="empty-state">Sin eventos este día.</div>`;
+    `).join('') : `<div class="empty-state" style="padding:14px 0">Sin trabajo, actividades ni visitas hoy.</div>`;
+
+    content = juliaGroup + otherCards;
   } else {
     const HOUR_H = 44, START_H = 7, END_H = 23;
     const hourRows = [];
@@ -797,8 +902,9 @@ function renderHoy(){
       <div class="banner-eyebrow" style="color:var(--text-2)">Horarios libres hoy</div>
       <div class="banner-title" style="font-weight:500;font-size:13.5px">
         ${(() => {
-          const free = freeRanges(date);
-          return free.length ? free.map(([s,e])=>fmtRango(toHHMM(s),toHHMM(e))).join(' · ') : 'Sin huecos libres entre las 7:00 y las 23:00';
+          const free = freeRangesWithJulia(date);
+          if(!free.length) return 'Sin huecos libres entre las 7:00 y las 23:00';
+          return free.map(f=>`${fmtRango(toHHMM(f.start),toHHMM(f.end))} <span style="color:var(--text-3);font-weight:400">(${f.conJulia?'con Julia':'sin Julia'})</span>`).join(' · ');
         })()}
       </div>
     </div>
@@ -831,10 +937,12 @@ function renderSemana(){
       </div>
     `).join('') : `<div class="empty-state" style="padding:14px 0">Sin eventos.</div>`;
 
-    const free = freeRanges(d);
-    const freeLine = `<div class="detail-line" style="color:var(--text-3);font-size:11.5px;margin-top:6px">
-      <strong style="color:var(--text-2)">Libre:</strong> ${free.length ? free.map(([s,e])=>fmtRango(toHHMM(s),toHHMM(e))).join(' · ') : 'sin huecos entre 7:00 y 23:00'}
-    </div>`;
+    const free = freeRangesWithJulia(d);
+    const freeLine = !free.length
+      ? `<div class="detail-line" style="color:var(--text-3);font-size:11.5px;margin-top:6px">Libre: sin huecos entre 7:00 y 23:00</div>`
+      : `<div style="color:var(--text-3);font-size:11.5px;margin-top:6px">
+          <strong style="color:var(--text-2)">Libre:</strong> ${free.map(f=>`${fmtRango(toHHMM(f.start),toHHMM(f.end))} (${f.conJulia?'con Julia':'sin Julia'})`).join(' · ')}
+        </div>`;
 
     return `
     <div class="week-day-block">
